@@ -77,3 +77,49 @@ def get_top_political_posts(
             for post in posts
         ]
     }
+
+
+@router.get("/summary")
+def get_analytics_summary(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+
+    total_posts = len(posts)
+
+    political_posts = [
+        post for post in posts
+        if post.political_score is not None and post.political_score > 0
+    ]
+
+    negative_posts = [
+        post for post in posts
+        if post.sentiment == "negative"
+    ]
+
+    toxic_posts = [
+        post for post in posts
+        if post.toxicity_score is not None and post.toxicity_score > 0
+    ]
+
+    topic_counter = Counter()
+    sentiment_counter = Counter()
+
+    for post in posts:
+        sentiment_counter[post.sentiment or "unknown"] += 1
+
+        if post.topics:
+            for topic in post.topics:
+                topic_counter[topic] += 1
+
+    top_topics = dict(topic_counter.most_common(5))
+
+    return {
+        "total_posts": total_posts,
+        "political_posts": len(political_posts),
+        "negative_posts": len(negative_posts),
+        "toxic_posts": len(toxic_posts),
+        "political_ratio": round(len(political_posts) / total_posts, 2) if total_posts else 0,
+        "negative_ratio": round(len(negative_posts) / total_posts, 2) if total_posts else 0,
+        "toxic_ratio": round(len(toxic_posts) / total_posts, 2) if total_posts else 0,
+        "top_topics": top_topics,
+        "sentiment_distribution": dict(sentiment_counter)
+    }
