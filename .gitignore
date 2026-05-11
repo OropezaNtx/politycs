@@ -1,10 +1,35 @@
-.env
+# Python
 venv/
 __pycache__/
 *.pyc
-.pytest_cache/
-.DS_Store
-node_modules/
+*.pyo
+*.pyd
+.Python
+
+# Env
+.env
 .env.*
+!.env.example
+
+# IDE
 .vscode/
 .idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Outputs / cache
+scraping/outputs/
+*.log
+
+# Temporary files
+*~
+scripts~
+
+# Database / local volumes
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+postgres_data/
