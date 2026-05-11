@@ -1,0 +1,8 @@
+# POLITYCS — GUÍA COMPLETA DE ARRANQUE Y DESARROLLO
+
+---
+
+# 1. ENTRAR AL PROYECTO
+
+```bash
+cd ~/projects/politycs
