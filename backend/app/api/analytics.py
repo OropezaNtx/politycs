@@ -207,3 +207,34 @@ def get_posts_by_source(db: Session = Depends(get_db)):
         "by_source": dict(source_counter),
         "by_platform": dict(platform_counter)
     }
+
+
+@router.get("/negative-posts")
+def get_negative_posts(
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    posts = (
+        db.query(Post)
+        .filter(Post.sentiment == "negative")
+        .order_by(Post.political_score.desc(), Post.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "total_returned": len(posts),
+        "posts": [
+            {
+                "id": post.id,
+                "title": post.title,
+                "source": post.source,
+                "platform": post.platform,
+                "topics": post.topics,
+                "political_score": post.political_score,
+                "toxicity_score": post.toxicity_score,
+                "url": post.url
+            }
+            for post in posts
+        ]
+    }
