@@ -123,3 +123,38 @@ def get_analytics_summary(db: Session = Depends(get_db)):
         "top_topics": top_topics,
         "sentiment_distribution": dict(sentiment_counter)
     }
+
+
+
+@router.get("/by-topic/{topic}")
+def get_posts_by_topic(
+    topic: str,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    posts = (
+        db.query(Post)
+        .filter(Post.topics.contains([topic]))
+        .order_by(Post.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "topic": topic,
+        "total_returned": len(posts),
+        "posts": [
+            {
+                "id": post.id,
+                "title": post.title,
+                "source": post.source,
+                "platform": post.platform,
+                "sentiment": post.sentiment,
+                "topics": post.topics,
+                "political_score": post.political_score,
+                "toxicity_score": post.toxicity_score,
+                "url": post.url
+            }
+            for post in posts
+        ]
+    }
