@@ -158,3 +158,52 @@ def get_posts_by_topic(
             for post in posts
         ]
     }
+
+
+@router.get("/trends")
+def get_topic_trends(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+
+    trends = {}
+
+    for post in posts:
+        if not post.scraped_at:
+            continue
+
+        date_key = post.scraped_at.strftime("%Y-%m-%d")
+
+        if date_key not in trends:
+            trends[date_key] = {}
+
+        if not post.topics:
+            topic_list = ["unknown"]
+        else:
+            topic_list = post.topics
+
+        for topic in topic_list:
+            if topic not in trends[date_key]:
+                trends[date_key][topic] = 0
+
+            trends[date_key][topic] += 1
+
+    return {
+        "total_days": len(trends),
+        "trends": trends
+    }
+
+@router.get("/by-source")
+def get_posts_by_source(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+
+    source_counter = Counter()
+    platform_counter = Counter()
+
+    for post in posts:
+        source_counter[post.source or "unknown"] += 1
+        platform_counter[post.platform or "unknown"] += 1
+
+    return {
+        "total_posts": len(posts),
+        "by_source": dict(source_counter),
+        "by_platform": dict(platform_counter)
+    }
