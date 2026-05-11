@@ -29,7 +29,7 @@ def analyze_post(post_id: int, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    text_to_analyze = post.content or ""
+    text_to_analyze = post.raw_content or post.title or ""
 
     result = analyze_text(text_to_analyze)
 
@@ -47,7 +47,7 @@ def analyze_post(post_id: int, db: Session = Depends(get_db)):
     return {
         "message": "Post analyzed successfully",
         "post_id": post.id,
-        "content": post.content,
+        "title": post.title,
         "nlp": result
     }
 
@@ -59,15 +59,12 @@ def analyze_all_posts(db: Session = Depends(get_db)):
     analyzed = 0
 
     for post in posts:
-
-        text_to_analyze = post.content or ""
+        text_to_analyze = post.raw_content or post.title or ""
 
         if not text_to_analyze.strip():
-            print("EMPTY CONTENT")
             continue
 
         result = analyze_text(text_to_analyze)
-
 
         post.detected_language = result["detected_language"]
         post.sentiment = result["sentiment"]
@@ -79,9 +76,7 @@ def analyze_all_posts(db: Session = Depends(get_db)):
 
         analyzed += 1
 
-
     db.commit()
-
 
     return {
         "message": "Posts analyzed successfully",
