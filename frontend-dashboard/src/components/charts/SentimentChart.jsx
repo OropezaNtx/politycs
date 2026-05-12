@@ -1,22 +1,39 @@
 "use client";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { getSentimentAnalytics } from "@/services/api";
 
-const data = [
-  { name: "Positivo", value: 320 },
-  { name: "Neutral", value: 796 },
-  { name: "Negativo", value: 132 },
-];
-
-const COLORS = ["#22c55e", "#38bdf8", "#ef4444"];
+const COLORS = ["#ef4444", "#38bdf8", "#22c55e", "#a855f7"];
 
 export default function SentimentChart() {
+  const [data, setData] = useState([]);
+
+useEffect(() => {
+  async function loadData() {
+    try {
+      const response = await getSentimentAnalytics();
+
+      const formatted = Object.entries(response.sentiment || {}).map(
+        ([name, value]) => ({
+          name,
+          value,
+        })
+      );
+
+      setData(formatted);
+    } catch (error) {
+      console.error("Error loading sentiment:", error);
+    }
+  }
+
+  loadData();
+
+  const interval = setInterval(loadData, 30000);
+
+  return () => clearInterval(interval);
+}, []);
+
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
       <h2 className="text-lg font-semibold text-white">Sentimiento</h2>
@@ -36,9 +53,10 @@ export default function SentimentChart() {
               paddingAngle={4}
             >
               {data.map((entry, index) => (
-                <Cell key={entry.name} fill={COLORS[index]} />
+                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
+
             <Tooltip
               contentStyle={{
                 backgroundColor: "#020617",

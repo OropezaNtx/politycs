@@ -1,33 +1,63 @@
-import { Activity, AlertTriangle, MessageSquareText, TrendingUp } from "lucide-react";
+"use client";
 
-const kpis = [
-  {
-    title: "Total posts",
-    value: "1,248",
-    detail: "Posts procesados",
-    icon: MessageSquareText,
-  },
-  {
-    title: "Posts políticos",
-    value: "486",
-    detail: "Contenido clasificado",
-    icon: Activity,
-  },
-  {
-    title: "Negativos",
-    value: "132",
-    detail: "Sentimiento crítico",
-    icon: AlertTriangle,
-  },
-  {
-    title: "Topic principal",
-    value: "Seguridad",
-    detail: "Tema más mencionado",
-    icon: TrendingUp,
-  },
-];
+import { useEffect, useState } from "react";
+
+import {
+  Activity,
+  AlertTriangle,
+  MessageSquareText,
+  TrendingUp,
+} from "lucide-react";
+
+import { getAnalyticsSummary } from "@/services/api";
 
 export default function KpiGrid() {
+  const [summary, setSummary] = useState(null);
+
+useEffect(() => {
+  async function loadSummary() {
+    try {
+      const data = await getAnalyticsSummary();
+      setSummary(data);
+    } catch (error) {
+      console.error("Error loading summary:", error);
+    }
+  }
+
+  loadSummary();
+
+  const interval = setInterval(loadSummary, 30000);
+
+  return () => clearInterval(interval);
+}, []);
+
+  const kpis = [
+    {
+      title: "Total posts",
+      value: summary?.total_posts ?? "...",
+      detail: "Posts procesados",
+      icon: MessageSquareText,
+    },
+    {
+      title: "Posts políticos",
+      value: summary?.political_posts ?? "...",
+      detail: "Contenido clasificado",
+      icon: Activity,
+    },
+    {
+      title: "Negativos",
+      value: summary?.negative_posts ?? "...",
+      detail: "Sentimiento crítico",
+      icon: AlertTriangle,
+    },
+    {
+      title: "Topic principal",
+      value: summary?.top_topic ?? "...",
+      detail: "Tema más mencionado",
+      icon: TrendingUp,
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
       {kpis.map((item) => {
@@ -42,12 +72,21 @@ export default function KpiGrid() {
               <div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-300">
                 <Icon size={22} />
               </div>
-              <span className="text-xs text-emerald-300">Mock data</span>
+
+              <span className="text-xs text-emerald-300">
+                Live data
+              </span>
             </div>
 
             <p className="text-sm text-slate-400">{item.title}</p>
-            <h3 className="mt-2 text-3xl font-bold text-white">{item.value}</h3>
-            <p className="mt-2 text-sm text-slate-500">{item.detail}</p>
+
+            <h3 className="mt-2 text-3xl font-bold text-white">
+              {item.value}
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-500">
+              {item.detail}
+            </p>
           </article>
         );
       })}
