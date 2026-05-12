@@ -4,7 +4,8 @@ from app.database import Base, engine
 from app.api.posts import router as posts_router
 from app.api.nlp import router as nlp_router
 from app.api.analytics import router as analytics_router
-
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,6 +16,13 @@ app = FastAPI(
     version="0.1.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
