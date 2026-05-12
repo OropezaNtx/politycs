@@ -33,3 +33,16 @@ scripts~
 *.sqlite3
 pgdata/
 postgres_data/
+
+# Next.js
+frontend-dashboard/node_modules/
+frontend-dashboard/.next/
+frontend-dashboard/out/
+
+# Frontend env
+frontend-dashboard/.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
