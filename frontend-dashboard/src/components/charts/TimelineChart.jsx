@@ -15,6 +15,28 @@ import {
 import { getTimelineAnalytics } from "@/services/api";
 import { useSource } from "@/context/SourceContext";
 
+function formatTrendsResponse(response) {
+  if (Array.isArray(response)) {
+    return response.map((item) => ({
+      hour: item.hour || "N/A",
+      posts: item.count || 0,
+    }));
+  }
+
+  if (!response?.trends) {
+    return [];
+  }
+
+  return Object.entries(response.trends).map(([date, topics]) => {
+    const total = Object.values(topics).reduce((sum, value) => sum + value, 0);
+
+    return {
+      hour: date,
+      posts: total,
+    };
+  });
+}
+
 export default function TimelineChart() {
   const [data, setData] = useState([]);
   const { source } = useSource();
@@ -23,26 +45,12 @@ export default function TimelineChart() {
     async function loadData() {
       try {
         const response = await getTimelineAnalytics(source);
-
-        const formatted = response.map((item) => {
-          const date = item.hour ? new Date(item.hour) : null;
-
-          return {
-            hour: date
-              ? date.toLocaleString("es-MX", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "N/A",
-            posts: item.count,
-          };
-        });
+        const formatted = formatTrendsResponse(response);
 
         setData(formatted);
       } catch (error) {
         console.error("Error loading timeline:", error);
+        setData([]);
       }
     }
 
@@ -60,10 +68,10 @@ export default function TimelineChart() {
       </h2>
 
       <p className="mb-6 text-sm text-slate-400">
-        Actividad de conversación agrupada por hora.
+        Actividad de conversación agrupada por día.
       </p>
 
-      <div className="h-80">
+      <div className="h-80 min-h-80 min-w-0">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No hay actividad registrada para esta fuente.
