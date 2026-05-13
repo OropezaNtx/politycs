@@ -30,6 +30,14 @@ RSS_FEEDS = [
 def ingest_rss_feed(db: Session, feed_config: dict):
     feed = feedparser.parse(feed_config["url"])
 
+    print("===================================")
+    print(f"RSS SOURCE: {feed_config['source']}")
+    print(f"RSS URL: {feed_config['url']}")
+    print(f"RSS STATUS: {getattr(feed, 'status', 'unknown')}")
+    print(f"RSS BOZO: {feed.bozo}")
+    print(f"RSS ENTRIES: {len(feed.entries)}")
+    print("===================================")
+
     created = 0
     duplicated = 0
     errors = 0
@@ -52,6 +60,7 @@ def ingest_rss_feed(db: Session, feed_config: dict):
             tags=feed_config.get("tags")
         )
 
+        print(f"Processing RSS item: {title}")
         try:
             result = create_post(db, post)
 
@@ -61,7 +70,13 @@ def ingest_rss_feed(db: Session, feed_config: dict):
                 created += 1
 
         except Exception as error:
-            print(f"RSS error: {error}")
+            print("===================================")
+            print(f"RSS SOURCE: {feed_config['source']}")
+            print(f"RSS TITLE: {title}")
+            print(f"RSS LINK: {link}")
+            print(f"RSS ERROR: {error}")
+            print("===================================")
+
             errors += 1
 
     return {
