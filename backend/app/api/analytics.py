@@ -281,3 +281,33 @@ def get_negative_posts(
             for post in posts
         ]
     }
+
+
+@router.get("/sources")
+def get_available_sources(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+
+    source_counter = Counter()
+    platform_counter = Counter()
+
+    for post in posts:
+        source_counter[post.source or "unknown"] += 1
+        platform_counter[post.platform or "unknown"] += 1
+
+    return {
+        "total_posts": len(posts),
+        "sources": [
+            {
+                "name": source,
+                "total_posts": total
+            }
+            for source, total in source_counter.items()
+        ],
+        "platforms": [
+            {
+                "name": platform,
+                "total_posts": total
+            }
+            for platform, total in platform_counter.items()
+        ]
+    }
