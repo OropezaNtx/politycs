@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { getTopPoliticalPosts } from "@/services/api";
+import { useSource } from "@/context/SourceContext";
 
 function normalizeArray(response) {
   if (Array.isArray(response)) return response;
@@ -13,23 +15,24 @@ function normalizeArray(response) {
 
 export default function RelevantPostsFeed() {
   const [posts, setPosts] = useState([]);
+  const { source } = useSource();
 
-    useEffect(() => {
-      async function loadPosts() {
-        try {
-          const response = await getTopPoliticalPosts();
-          setPosts(normalizeArray(response));
-        } catch (error) {
-          console.error("Error loading posts:", error);
-        }
+  useEffect(() => {
+    async function loadPosts() {
+      try {
+        const response = await getTopPoliticalPosts(source);
+        setPosts(normalizeArray(response));
+      } catch (error) {
+        console.error("Error loading posts:", error);
       }
+    }
 
-      loadPosts();
+    loadPosts();
 
-      const interval = setInterval(loadPosts, 30000);
+    const interval = setInterval(loadPosts, 30000);
 
-      return () => clearInterval(interval);
-    }, []);
+    return () => clearInterval(interval);
+  }, [source]);
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
@@ -40,7 +43,9 @@ export default function RelevantPostsFeed() {
 
       <div className="space-y-4">
         {posts.length === 0 ? (
-          <p className="text-sm text-slate-500">No hay posts disponibles.</p>
+          <p className="text-sm text-slate-500">
+            No hay posts disponibles para esta fuente.
+          </p>
         ) : (
           posts.map((post, index) => (
             <div
@@ -67,6 +72,19 @@ export default function RelevantPostsFeed() {
                   {post.sentiment || "N/A"}
                 </span>
               </p>
+
+              {post.topics?.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {post.topics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="rounded-full bg-cyan-500/10 px-2 py-1 text-xs text-cyan-300"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         )}

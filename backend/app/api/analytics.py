@@ -1,6 +1,7 @@
 from collections import Counter
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,9 +14,19 @@ router = APIRouter(
 )
 
 
+def apply_source_filter(query, source: str | None):
+    if source and source != "all":
+        return query.filter(Post.source == source)
+    return query
+
+
 @router.get("/topics")
-def get_topics_analytics(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
+def get_topics_analytics(
+    source: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = apply_source_filter(db.query(Post), source)
+    posts = query.all()
 
     topic_counter = Counter()
 
@@ -33,8 +44,12 @@ def get_topics_analytics(db: Session = Depends(get_db)):
 
 
 @router.get("/sentiment")
-def get_sentiment_analytics(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
+def get_sentiment_analytics(
+    source: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = apply_source_filter(db.query(Post), source)
+    posts = query.all()
 
     sentiment_counter = Counter()
 
@@ -47,14 +62,20 @@ def get_sentiment_analytics(db: Session = Depends(get_db)):
         "sentiment": dict(sentiment_counter)
     }
 
+
 @router.get("/top-political")
 def get_top_political_posts(
+    source: str | None = None,
     limit: int = 10,
     db: Session = Depends(get_db)
 ):
+    query = apply_source_filter(
+        db.query(Post).filter(Post.political_score > 0),
+        source
+    )
+
     posts = (
-        db.query(Post)
-        .filter(Post.political_score > 0)
+        query
         .order_by(Post.political_score.desc())
         .limit(limit)
         .all()
@@ -80,8 +101,12 @@ def get_top_political_posts(
 
 
 @router.get("/summary")
-def get_analytics_summary(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
+def get_analytics_summary(
+    source: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = apply_source_filter(db.query(Post), source)
+    posts = query.all()
 
     total_posts = len(posts)
 
@@ -111,6 +136,7 @@ def get_analytics_summary(db: Session = Depends(get_db)):
                 topic_counter[topic] += 1
 
     top_topics = dict(topic_counter.most_common(5))
+    top_topic = next(iter(top_topics), None)
 
     return {
         "total_posts": total_posts,
@@ -120,49 +146,19 @@ def get_analytics_summary(db: Session = Depends(get_db)):
         "political_ratio": round(len(political_posts) / total_posts, 2) if total_posts else 0,
         "negative_ratio": round(len(negative_posts) / total_posts, 2) if total_posts else 0,
         "toxic_ratio": round(len(toxic_posts) / total_posts, 2) if total_posts else 0,
+        "top_topic": top_topic,
         "top_topics": top_topics,
         "sentiment_distribution": dict(sentiment_counter)
     }
 
 
-
-@router.get("/by-topic/{topic}")
-def get_posts_by_topic(
-    topic: str,
-    limit: int = 20,
+@router.get("/trends")
+def get_topic_trends(
+    source: str | None = None,
     db: Session = Depends(get_db)
 ):
-    posts = (
-        db.query(Post)
-        .filter(Post.topics.contains([topic]))
-        .order_by(Post.id.desc())
-        .limit(limit)
-        .all()
-    )
-
-    return {
-        "topic": topic,
-        "total_returned": len(posts),
-        "posts": [
-            {
-                "id": post.id,
-                "title": post.title,
-                "source": post.source,
-                "platform": post.platform,
-                "sentiment": post.sentiment,
-                "topics": post.topics,
-                "political_score": post.political_score,
-                "toxicity_score": post.toxicity_score,
-                "url": post.url
-            }
-            for post in posts
-        ]
-    }
-
-
-@router.get("/trends")
-def get_topic_trends(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
+    query = apply_source_filter(db.query(Post), source)
+    posts = query.all()
 
     trends = {}
 
@@ -175,21 +171,42 @@ def get_topic_trends(db: Session = Depends(get_db)):
         if date_key not in trends:
             trends[date_key] = {}
 
-        if not post.topics:
-            topic_list = ["unknown"]
-        else:
-            topic_list = post.topics
+        topic_list = post.topics if post.topics else ["unknown"]
 
         for topic in topic_list:
-            if topic not in trends[date_key]:
-                trends[date_key][topic] = 0
-
-            trends[date_key][topic] += 1
+            trends[date_key][topic] = trends[date_key].get(topic, 0) + 1
 
     return {
         "total_days": len(trends),
         "trends": trends
     }
+
+
+@router.get("/timeline")
+def get_timeline(
+    source: str | None = None,
+    db: Session = Depends(get_db)
+):
+    query = apply_source_filter(db.query(Post), source).subquery()
+
+    results = (
+        db.query(
+            func.date_trunc("hour", query.c.created_at).label("hour"),
+            func.count(query.c.id).label("count"),
+        )
+        .group_by("hour")
+        .order_by("hour")
+        .all()
+    )
+
+    return [
+        {
+            "hour": item.hour.isoformat() if item.hour else None,
+            "count": item.count,
+        }
+        for item in results
+    ]
+
 
 @router.get("/by-source")
 def get_posts_by_source(db: Session = Depends(get_db)):
@@ -211,12 +228,15 @@ def get_posts_by_source(db: Session = Depends(get_db)):
 
 @router.get("/negative-posts")
 def get_negative_posts(
+    source: str | None = None,
     limit: int = 20,
     db: Session = Depends(get_db)
 ):
+    query = db.query(Post).filter(Post.sentiment == "negative")
+    query = apply_source_filter(query, source)
+
     posts = (
-        db.query(Post)
-        .filter(Post.sentiment == "negative")
+        query
         .order_by(Post.political_score.desc(), Post.id.desc())
         .limit(limit)
         .all()

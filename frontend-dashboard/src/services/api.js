@@ -8,32 +8,52 @@ export const api = axios.create({
   timeout: 10000,
 });
 
+function withSource(source) {
+  if (!source || source === "all") {
+    return {};
+  }
+
+  return {
+    params: {
+      source,
+    },
+  };
+}
+
 export async function getHealth() {
   const response = await api.get("/health");
   return response.data;
 }
 
-export async function getAnalyticsSummary() {
-  const response = await api.get("/analytics/summary");
+export async function getAnalyticsSummary(source = "all") {
+  const response = await api.get("/analytics/summary", withSource(source));
   return response.data;
 }
 
-export async function getSentimentAnalytics() {
-  const response = await api.get("/analytics/sentiment");
+export async function getSentimentAnalytics(source = "all") {
+  const response = await api.get("/analytics/sentiment", withSource(source));
   return response.data;
 }
 
-export async function getTopicsAnalytics() {
-  const response = await api.get("/analytics/topics");
+export async function getTopicsAnalytics(source = "all") {
+  const response = await api.get("/analytics/topics", withSource(source));
   return response.data;
 }
 
-export async function getTrendsAnalytics() {
-  const response = await api.get("/analytics/trends");
+export async function getTrendsAnalytics(source = "all") {
+  const response = await api.get("/analytics/trends", withSource(source));
   return response.data;
 }
 
-export async function getTopPoliticalPosts() {
-  const response = await api.get("/analytics/top-political");
+export async function getTimelineAnalytics(source = "all") {
+  const response = await api.get("/analytics/timeline", withSource(source));
+  return response.data;
+}
+
+export async function getTopPoliticalPosts(source = "all") {
+  const response = await api.get(
+    "/analytics/top-political",
+    withSource(source)
+  );
   return response.data;
 }

@@ -9,35 +9,39 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
 import { getTopicsAnalytics } from "@/services/api";
+import { useSource } from "@/context/SourceContext";
 
 export default function TopicsChart() {
   const [data, setData] = useState([]);
+  const { source } = useSource();
 
-    useEffect(() => {
-      async function loadData() {
-        try {
-          const response = await getTopicsAnalytics();
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const response = await getTopicsAnalytics(source);
 
-          const formatted = Object.entries(response.topics || {}).map(
-            ([topic, count]) => ({
-              topic,
-              posts: count,
-            })
-          );
+        const formatted = Object.entries(response.topics || {}).map(
+          ([topic, count]) => ({
+            topic,
+            posts: count,
+          })
+        );
 
-          setData(formatted);
-        } catch (error) {
-          console.error("Error loading topics:", error);
-        }
+        setData(formatted);
+      } catch (error) {
+        console.error("Error loading topics:", error);
       }
+    }
 
-      loadData();
+    loadData();
 
-      const interval = setInterval(loadData, 30000);
+    const interval = setInterval(loadData, 30000);
 
-      return () => clearInterval(interval);
-    }, []);
+    return () => clearInterval(interval);
+  }, [source]);
+
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
       <h2 className="text-lg font-semibold text-white">Topics principales</h2>

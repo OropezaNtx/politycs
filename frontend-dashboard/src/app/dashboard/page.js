@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SourceFilter from "@/components/filters/SourceFilter";
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import KpiGrid from "@/components/dashboard/KpiGrid";
 import SentimentChart from "@/components/charts/SentimentChart";
 import TopicsChart from "@/components/charts/TopicsChart";
 import TrendsChart from "@/components/charts/TrendsChart";
+import TimelineChart from "@/components/charts/TimelineChart";
 import RelevantPostsFeed from "@/components/feed/RelevantPostsFeed";
 
 import { getHealth } from "@/services/api";
@@ -17,19 +19,19 @@ export default function DashboardPage() {
   useEffect(() => {
     async function testConnection() {
       try {
-        const data = await getHealth();
-
-        console.log("Backend response:", data);
-
+        await getHealth();
         setBackendStatus("Backend conectado");
       } catch (error) {
         console.error(error);
-
         setBackendStatus("Error de conexión");
       }
     }
 
     testConnection();
+
+    const interval = setInterval(testConnection, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -52,6 +54,7 @@ export default function DashboardPage() {
           <div className="mt-4 inline-flex rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-300">
             {backendStatus}
           </div>
+          <SourceFilter />
         </div>
 
         <KpiGrid />
@@ -60,6 +63,8 @@ export default function DashboardPage() {
           <SentimentChart />
           <TopicsChart />
         </div>
+
+        <TimelineChart />
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">

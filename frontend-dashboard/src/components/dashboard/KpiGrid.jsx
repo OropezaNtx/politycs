@@ -10,26 +10,28 @@ import {
 } from "lucide-react";
 
 import { getAnalyticsSummary } from "@/services/api";
+import { useSource } from "@/context/SourceContext";
 
 export default function KpiGrid() {
   const [summary, setSummary] = useState(null);
+  const { source } = useSource();
 
-useEffect(() => {
-  async function loadSummary() {
-    try {
-      const data = await getAnalyticsSummary();
-      setSummary(data);
-    } catch (error) {
-      console.error("Error loading summary:", error);
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        const data = await getAnalyticsSummary(source);
+        setSummary(data);
+      } catch (error) {
+        console.error("Error loading summary:", error);
+      }
     }
-  }
 
-  loadSummary();
+    loadSummary();
 
-  const interval = setInterval(loadSummary, 30000);
+    const interval = setInterval(loadSummary, 30000);
 
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, [source]);
 
   const kpis = [
     {

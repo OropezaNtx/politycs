@@ -1,45 +1,48 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
-  AreaChart,
-  Area,
+  ResponsiveContainer,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
-import { getTrendsAnalytics } from "@/services/api";
+import { getTimelineAnalytics } from "@/services/api";
 import { useSource } from "@/context/SourceContext";
 
-export default function TrendsChart() {
+export default function TimelineChart() {
   const [data, setData] = useState([]);
   const { source } = useSource();
 
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await getTrendsAnalytics(source);
+        const response = await getTimelineAnalytics(source);
 
-        const formatted = Object.entries(response.trends || {}).map(
-          ([date, topics]) => ({
-            date,
-            total: Object.values(topics).reduce(
-              (sum, value) => sum + value,
-              0
-            ),
-            seguridad: topics.seguridad || 0,
-            agua: topics.agua || 0,
-            corrupcion: topics.corrupcion || 0,
-            transporte: topics.transporte || 0,
-            general: topics.general || 0,
-          })
-        );
+        const formatted = response.map((item) => {
+          const date = item.hour ? new Date(item.hour) : null;
+
+          return {
+            hour: date
+              ? date.toLocaleString("es-MX", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "N/A",
+            posts: item.count,
+          };
+        });
 
         setData(formatted);
       } catch (error) {
-        console.error("Error loading trends:", error);
+        console.error("Error loading timeline:", error);
       }
     }
 
@@ -52,21 +55,28 @@ export default function TrendsChart() {
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
-      <h2 className="text-lg font-semibold text-white">Tendencias</h2>
+      <h2 className="text-lg font-semibold text-white">
+        Timeline de actividad
+      </h2>
+
       <p className="mb-6 text-sm text-slate-400">
-        Evolución diaria de conversación detectada.
+        Actividad de conversación agrupada por hora.
       </p>
 
       <div className="h-80">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
-            No hay datos de tendencias para esta fuente.
+            No hay actividad registrada para esta fuente.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-              <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
+            <LineChart data={data}>
+              <CartesianGrid stroke="#1e293b" />
+
+              <XAxis dataKey="hour" stroke="#94a3b8" fontSize={12} />
+
               <YAxis stroke="#94a3b8" fontSize={12} />
+
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#020617",
@@ -76,14 +86,15 @@ export default function TrendsChart() {
                 }}
               />
 
-              <Area
+              <Line
                 type="monotone"
-                dataKey="total"
-                stroke="#06b6d4"
-                fill="#06b6d4"
-                fillOpacity={0.15}
+                dataKey="posts"
+                stroke="#22d3ee"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
-            </AreaChart>
+            </LineChart>
           </ResponsiveContainer>
         )}
       </div>
