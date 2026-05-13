@@ -13,6 +13,8 @@ import RelevantPostsFeed from "@/components/feed/RelevantPostsFeed";
 
 import { getHealth } from "@/services/api";
 
+import RssControls from "@/components/actions/RssControls";
+
 export default function DashboardPage() {
   const [backendStatus, setBackendStatus] = useState("Conectando...");
 
@@ -56,7 +58,7 @@ export default function DashboardPage() {
           </div>
           <SourceFilter />
         </div>
-
+        <RssControls />
         <KpiGrid />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

@@ -69,3 +69,9 @@ export async function getAvailableSources() {
   const response = await api.get("/analytics/sources");
   return response.data;
 }
+
+
+export async function ingestRssNews() {
+  const response = await api.post("/rss/ingest");
+  return response.data;
+}
