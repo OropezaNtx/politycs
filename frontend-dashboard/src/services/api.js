@@ -64,3 +64,8 @@ export async function getTopPoliticalPosts(source = "all") {
 export async function getRelevantPosts(source = "all") {
   return getTopPoliticalPosts(source);
 }
+
+export async function getAvailableSources() {
+  const response = await api.get("/analytics/sources");
+  return response.data;
+}
