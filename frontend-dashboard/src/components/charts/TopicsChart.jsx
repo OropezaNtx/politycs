@@ -49,7 +49,7 @@ export default function TopicsChart() {
         Temas con mayor volumen de conversación.
       </p>
 
-      <div className="h-72">
+      <div className="h-72 min-h-72 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <XAxis dataKey="topic" stroke="#94a3b8" fontSize={12} />

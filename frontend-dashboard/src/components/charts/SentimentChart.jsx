@@ -44,7 +44,7 @@ export default function SentimentChart() {
         Distribución general de sentimiento.
       </p>
 
-      <div className="h-72">
+      <div className="h-72 min-h-72 min-w-0">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No hay datos de sentimiento para esta fuente.

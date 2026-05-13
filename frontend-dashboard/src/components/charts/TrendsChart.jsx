@@ -57,7 +57,7 @@ export default function TrendsChart() {
         Evolución diaria de conversación detectada.
       </p>
 
-      <div className="h-80">
+      <div className="h-80 min-h-80 min-w-0">
         {data.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No hay datos de tendencias para esta fuente.
