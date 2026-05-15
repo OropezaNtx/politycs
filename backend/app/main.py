@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.rss import router as rss_router
 from app.services.scheduler_service import start_scheduler
+from app.api.geo import router as geo_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -48,3 +49,4 @@ app.include_router(posts_router)
 app.include_router(nlp_router)
 app.include_router(analytics_router)
 app.include_router(rss_router)
+app.include_router(geo_router)
