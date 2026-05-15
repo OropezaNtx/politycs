@@ -18,6 +18,8 @@ export default function RssControls() {
     try {
       const data = await ingestRssNews();
       setResult(data);
+
+      window.dispatchEvent(new Event("rss-updated"));
     } catch (error) {
       console.error("Error ingesting RSS:", error);
       setErrorMessage("No se pudo actualizar RSS. Revisa backend o conexión.");
