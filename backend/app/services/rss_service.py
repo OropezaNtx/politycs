@@ -3,32 +3,69 @@ from sqlalchemy.orm import Session
 
 from app.schemas import PostCreate
 from app.services.post_service import create_post
-
+from bs4 import BeautifulSoup
 
 RSS_FEEDS = [
     {
-        "source": "el_universal",
+        "source": "aristegui",
         "platform": "rss_news",
-        "url": "https://www.eluniversal.com.mx/rss.xml",
+        "url": "https://editorial.aristeguinoticias.com/feed/",
+        "tags": "news,mexico,politics"
+    },
+    {
+        "source": "aristegui_mexico",
+        "platform": "rss_news",
+        "url": "https://editorial.aristeguinoticias.com/category/mexico/feed/",
+        "tags": "news,mexico,politics"
+    },
+    {
+        "source": "proceso",
+        "platform": "rss_news",
+        "url": "https://www.proceso.com.mx/rss/",
         "tags": "news,mexico,politics"
     },
     {
         "source": "milenio",
         "platform": "rss_news",
-        "url": "https://www.milenio.com/rss/feed.xml",
-        "tags": "news,mexico,politics"
-    },
-    {
-        "source": "excelsior",
-        "platform": "rss_news",
-        "url": "https://www.excelsior.com.mx/rss.xml",
+        "url": "https://www.milenio.com/api/v1/rss",
         "tags": "news,mexico,politics"
     }
 ]
 
+def clean_html_content(text: str | None) -> str:
+    if not text:
+        return ""
+
+    soup = BeautifulSoup(text, "html.parser")
+    clean_text = soup.get_text(" ", strip=True)
+
+    return clean_text
+
 
 def ingest_rss_feed(db: Session, feed_config: dict):
     feed = feedparser.parse(feed_config["url"])
+
+    status = getattr(feed, "status", None)
+    content_type = feed.get("headers", {}).get("content-type", "")
+
+    if status and status >= 400:
+        print(f"RSS SKIPPED: {feed_config['source']} returned status {status}")
+        return {
+            "source": feed_config["source"],
+            "created": 0,
+            "duplicated": 0,
+            "errors": 1
+        }
+
+    if len(feed.entries) == 0:
+        print(f"RSS SKIPPED: {feed_config['source']} returned 0 entries")
+        print(f"CONTENT TYPE: {content_type}")
+        return {
+            "source": feed_config["source"],
+            "created": 0,
+            "duplicated": 0,
+            "errors": 1
+        }
 
     print("===================================")
     print(f"RSS SOURCE: {feed_config['source']}")
@@ -45,7 +82,7 @@ def ingest_rss_feed(db: Session, feed_config: dict):
     for entry in feed.entries:
         title = entry.get("title", "")
         link = entry.get("link", "")
-        summary = entry.get("summary", "")
+        summary = clean_html_content(entry.get("summary", ""))
 
         if not link:
             continue
