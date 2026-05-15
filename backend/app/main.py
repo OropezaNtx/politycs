@@ -7,6 +7,7 @@ from app.api.analytics import router as analytics_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.rss import router as rss_router
+from app.services.scheduler_service import start_scheduler
 
 Base.metadata.create_all(bind=engine)
 
@@ -16,6 +17,10 @@ app = FastAPI(
     description="Backend inicial para la plataforma Politycs",
     version="0.1.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
 
 app.add_middleware(
     CORSMiddleware,
