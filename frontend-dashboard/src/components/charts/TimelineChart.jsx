@@ -44,21 +44,19 @@ export default function TimelineChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await getTimelineAnalytics(source);
-        const formatted = formatTrendsResponse(response);
-
-        setData(formatted);
+        // aquí dejas tu lógica actual
       } catch (error) {
-        console.error("Error loading timeline:", error);
-        setData([]);
+        console.error("Error loading data:", error);
       }
     }
 
     loadData();
 
-    const interval = setInterval(loadData, 30000);
+    window.addEventListener("rss-updated", loadData);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadData);
+    };
   }, [source]);
 
   return (

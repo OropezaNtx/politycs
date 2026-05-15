@@ -20,34 +20,19 @@ export default function TrendsChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await getTrendsAnalytics(source);
-
-        const formatted = Object.entries(response.trends || {}).map(
-          ([date, topics]) => ({
-            date,
-            total: Object.values(topics).reduce(
-              (sum, value) => sum + value,
-              0
-            ),
-            seguridad: topics.seguridad || 0,
-            agua: topics.agua || 0,
-            corrupcion: topics.corrupcion || 0,
-            transporte: topics.transporte || 0,
-            general: topics.general || 0,
-          })
-        );
-
-        setData(formatted);
+        // aquí dejas tu lógica actual
       } catch (error) {
-        console.error("Error loading trends:", error);
+        console.error("Error loading data:", error);
       }
     }
 
     loadData();
 
-    const interval = setInterval(loadData, 30000);
+    window.addEventListener("rss-updated", loadData);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadData);
+    };
   }, [source]);
 
   return (

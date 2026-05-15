@@ -20,26 +20,19 @@ export default function TopicsChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await getTopicsAnalytics(source);
-
-        const formatted = Object.entries(response.topics || {}).map(
-          ([topic, count]) => ({
-            topic,
-            posts: count,
-          })
-        );
-
-        setData(formatted);
+        // aquí dejas tu lógica actual
       } catch (error) {
-        console.error("Error loading topics:", error);
+        console.error("Error loading data:", error);
       }
     }
 
     loadData();
 
-    const interval = setInterval(loadData, 30000);
+    window.addEventListener("rss-updated", loadData);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadData);
+    };
   }, [source]);
 
   return (

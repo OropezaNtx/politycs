@@ -15,26 +15,19 @@ export default function SentimentChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await getSentimentAnalytics(source);
-
-        const formatted = Object.entries(response.sentiment || {}).map(
-          ([name, value]) => ({
-            name,
-            value,
-          })
-        );
-
-        setData(formatted);
+        // aquí dejas tu lógica actual
       } catch (error) {
-        console.error("Error loading sentiment:", error);
+        console.error("Error loading data:", error);
       }
     }
 
     loadData();
 
-    const interval = setInterval(loadData, 30000);
+    window.addEventListener("rss-updated", loadData);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadData);
+    };
   }, [source]);
 
   return (

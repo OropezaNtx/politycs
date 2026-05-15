@@ -24,14 +24,17 @@ export default function RelevantPostsFeed() {
         setPosts(normalizeArray(response));
       } catch (error) {
         console.error("Error loading posts:", error);
+        setPosts([]);
       }
     }
 
     loadPosts();
 
-    const interval = setInterval(loadPosts, 30000);
+    window.addEventListener("rss-updated", loadPosts);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadPosts);
+    };
   }, [source]);
 
   return (
