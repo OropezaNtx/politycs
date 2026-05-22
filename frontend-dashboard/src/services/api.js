@@ -86,3 +86,8 @@ export async function getPlatformSummary() {
   const response = await api.get("/analytics/platform-summary");
   return response.data;
 }
+
+export async function getRecentPosts(source = "all") {
+  const response = await api.get(`/posts/recent?source=${source}&limit=15`);
+  return response.data;
+}

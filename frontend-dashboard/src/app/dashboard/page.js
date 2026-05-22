@@ -12,6 +12,8 @@ import TimelineChart from "@/components/charts/TimelineChart";
 import RelevantPostsFeed from "@/components/feed/RelevantPostsFeed";
 import GeoIntelligenceCard from "@/components/geo/GeoIntelligenceCard";
 import { getHealth } from "@/services/api";
+import PlatformSummaryCard from "@/components/intelligence/PlatformSummaryCard";
+import LiveIntelligenceFeed from "@/components/live/LiveIntelligenceFeed";
 
 import RssControls from "@/components/actions/RssControls";
 
@@ -59,6 +61,8 @@ export default function DashboardPage() {
           <SourceFilter />
         </div>
         <RssControls />
+        <PlatformSummaryCard />
+        <LiveIntelligenceFeed />
         <GeoIntelligenceCard />
         <GeoMap />
         <KpiGrid />
