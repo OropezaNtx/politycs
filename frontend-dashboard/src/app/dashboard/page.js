@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import SourceFilter from "@/components/filters/SourceFilter";
-
+import GeoMap from "@/components/geo/GeoMap";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import KpiGrid from "@/components/dashboard/KpiGrid";
 import SentimentChart from "@/components/charts/SentimentChart";
@@ -10,7 +10,7 @@ import TopicsChart from "@/components/charts/TopicsChart";
 import TrendsChart from "@/components/charts/TrendsChart";
 import TimelineChart from "@/components/charts/TimelineChart";
 import RelevantPostsFeed from "@/components/feed/RelevantPostsFeed";
-
+import GeoIntelligenceCard from "@/components/geo/GeoIntelligenceCard";
 import { getHealth } from "@/services/api";
 
 import RssControls from "@/components/actions/RssControls";
@@ -59,6 +59,8 @@ export default function DashboardPage() {
           <SourceFilter />
         </div>
         <RssControls />
+        <GeoIntelligenceCard />
+        <GeoMap />
         <KpiGrid />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

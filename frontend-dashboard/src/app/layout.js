@@ -1,4 +1,5 @@
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 
 import { SourceProvider } from "@/context/SourceContext";
 
