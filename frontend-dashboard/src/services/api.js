@@ -75,3 +75,14 @@ export async function ingestRssNews() {
   const response = await api.post("/rss/ingest");
   return response.data;
 }
+
+
+export async function getGeoAnalytics(source = "all") {
+  const response = await api.get(`/analytics/geo?source=${source}`);
+  return response.data;
+}
+
+export async function getPlatformSummary() {
+  const response = await api.get("/analytics/platform-summary");
+  return response.data;
+}

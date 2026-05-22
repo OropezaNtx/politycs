@@ -311,3 +311,63 @@ def get_available_sources(db: Session = Depends(get_db)):
             for platform, total in platform_counter.items()
         ]
     }
+
+
+
+
+@router.get("/platform-summary")
+def get_platform_summary(db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+
+    platforms = {}
+
+    for post in posts:
+        platform = post.platform or "unknown"
+
+        if platform not in platforms:
+            platforms[platform] = {
+                "platform": platform,
+                "total_posts": 0,
+                "political_posts": 0,
+                "negative_posts": 0,
+                "toxic_posts": 0,
+                "topics": Counter(),
+            }
+
+        platforms[platform]["total_posts"] += 1
+
+        if post.political_score is not None and post.political_score > 0:
+            platforms[platform]["political_posts"] += 1
+
+        if post.sentiment == "negative":
+            platforms[platform]["negative_posts"] += 1
+
+        if post.toxicity_score is not None and post.toxicity_score > 0:
+            platforms[platform]["toxic_posts"] += 1
+
+        if post.topics:
+            for topic in post.topics:
+                platforms[platform]["topics"][topic] += 1
+
+    result = []
+
+    for platform_data in platforms.values():
+        total = platform_data["total_posts"]
+
+        result.append({
+            "platform": platform_data["platform"],
+            "total_posts": total,
+            "political_posts": platform_data["political_posts"],
+            "negative_posts": platform_data["negative_posts"],
+            "toxic_posts": platform_data["toxic_posts"],
+            "political_ratio": round(platform_data["political_posts"] / total, 2) if total else 0,
+            "negative_ratio": round(platform_data["negative_posts"] / total, 2) if total else 0,
+            "toxic_ratio": round(platform_data["toxic_posts"] / total, 2) if total else 0,
+            "top_topics": dict(platform_data["topics"].most_common(5)),
+        })
+
+    return {
+        "total_platforms": len(result),
+        "platforms": result
+    }
+
