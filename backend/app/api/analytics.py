@@ -371,3 +371,92 @@ def get_platform_summary(db: Session = Depends(get_db)):
         "platforms": result
     }
 
+@router.get("/crisis")
+def get_crisis_analytics(
+    source: str = "all",
+    db: Session = Depends(get_db)
+):
+    query = db.query(Post)
+
+    if source and source != "all":
+        query = query.filter(Post.source == source)
+
+    posts = query.all()
+
+    sensitive_topics = {
+        "seguridad",
+        "corrupcion",
+        "corrupción",
+        "violencia",
+        "crimen",
+        "salud",
+        "agua",
+        "transporte",
+        "elecciones",
+    }
+
+    alerts = []
+
+    for post in posts:
+        risk_score = 0
+        reasons = []
+
+        if post.sentiment == "negative":
+            risk_score += 2
+            reasons.append("sentimiento negativo")
+
+        if post.political_score is not None and post.political_score >= 0.6:
+            risk_score += 2
+            reasons.append("alto score político")
+
+        if post.toxicity_score is not None and post.toxicity_score >= 0.4:
+            risk_score += 2
+            reasons.append("posible toxicidad")
+
+        post_topics = set(post.topics or [])
+
+        matched_topics = post_topics.intersection(sensitive_topics)
+
+        if matched_topics:
+            risk_score += len(matched_topics)
+            reasons.append(
+                "topic sensible: " + ", ".join(sorted(matched_topics))
+            )
+
+        if risk_score >= 3:
+            alerts.append({
+                "id": post.id,
+                "title": post.title,
+                "source": post.source,
+                "platform": post.platform,
+                "sentiment": post.sentiment,
+                "topics": post.topics,
+                "political_score": post.political_score,
+                "toxicity_score": post.toxicity_score,
+                "risk_score": risk_score,
+                "reasons": reasons,
+                "url": post.url,
+                "scraped_at": post.scraped_at,
+            })
+
+    alerts = sorted(
+        alerts,
+        key=lambda item: item["risk_score"],
+        reverse=True
+    )
+
+    risk_level = "low"
+
+    if len(alerts) >= 10:
+        risk_level = "high"
+    elif len(alerts) >= 5:
+        risk_level = "medium"
+
+    return {
+        "source": source,
+        "total_posts_analyzed": len(posts),
+        "total_alerts": len(alerts),
+        "risk_level": risk_level,
+        "alerts": alerts[:20],
+    }
+
