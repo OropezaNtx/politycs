@@ -14,6 +14,10 @@ import GeoIntelligenceCard from "@/components/geo/GeoIntelligenceCard";
 import { getHealth } from "@/services/api";
 import PlatformSummaryCard from "@/components/intelligence/PlatformSummaryCard";
 import LiveIntelligenceFeed from "@/components/live/LiveIntelligenceFeed";
+import CrisisDetectionPanel from "@/components/crisis/CrisisDetectionPanel";
+import EmergingTopicsPanel from "@/components/temporal/EmergingTopicsPanel";
+import IntelligenceAlertBar from "@/components/intelligence/IntelligenceAlertBar";
+import NarrativeIntelligencePanel from "@/components/narratives/NarrativeIntelligencePanel";
 
 import RssControls from "@/components/actions/RssControls";
 
@@ -60,9 +64,13 @@ export default function DashboardPage() {
           </div>
           <SourceFilter />
         </div>
+        <IntelligenceAlertBar />
         <RssControls />
         <PlatformSummaryCard />
+        <CrisisDetectionPanel />
+        <NarrativeIntelligencePanel />
         <LiveIntelligenceFeed />
+        <EmergingTopicsPanel />
         <GeoIntelligenceCard />
         <GeoMap />
         <KpiGrid />
