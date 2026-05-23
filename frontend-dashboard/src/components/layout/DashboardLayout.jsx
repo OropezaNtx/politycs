@@ -1,65 +1,111 @@
-import Link from "next/link";
-import { BarChart3, Home, Radio, Settings, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  BrainCircuit,
+  Globe2,
+  LayoutDashboard,
+  Map,
+  Radio,
+  Settings,
+} from "lucide-react";
+
+const menuItems = [
+  {
+    label: "Overview",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "Live Feed",
+    icon: Radio,
+  },
+  {
+    label: "Geo Intelligence",
+    icon: Map,
+  },
+  {
+    label: "Crisis",
+    icon: AlertTriangle,
+  },
+  {
+    label: "Narratives",
+    icon: BrainCircuit,
+  },
+  {
+    label: "Trends",
+    icon: BarChart3,
+  },
+];
 
 export default function DashboardLayout({ children }) {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-slate-800 bg-slate-950/95 p-6 lg:block">
-        <div className="mb-10">
-          <h2 className="text-2xl font-bold">Politycs</h2>
-          <p className="text-sm text-slate-400">Intelligence Platform</p>
-        </div>
-
-        <nav className="space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 rounded-xl bg-cyan-500/10 px-4 py-3 text-cyan-300"
-          >
-            <BarChart3 size={20} />
-            Dashboard
-          </Link>
-
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-900"
-          >
-            <Home size={20} />
-            Inicio
-          </Link>
-
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-500">
-            <Radio size={20} />
-            Monitoreo
-          </div>
-
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-500">
-            <ShieldCheck size={20} />
-            Riesgo político
-          </div>
-
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-slate-500">
-            <Settings size={20} />
-            Configuración
-          </div>
-        </nav>
-      </aside>
-
-      <section className="lg:pl-72">
-        <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-400">Proyecto</p>
-              <h1 className="font-semibold">Politycs Dashboard</h1>
+      <div className="flex min-h-screen">
+        <aside className="hidden w-72 shrink-0 border-r border-slate-800 bg-slate-950/95 p-6 xl:block">
+          <div className="mb-10">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-300">
+              <Globe2 size={26} />
             </div>
 
-            <div className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-300">
-              Backend Ready
-            </div>
-          </div>
-        </header>
+            <h1 className="text-xl font-bold tracking-tight">
+              Politycs
+            </h1>
 
-        <div className="p-6 lg:p-8">{children}</div>
-      </section>
+            <p className="mt-1 text-xs text-slate-500">
+              Intelligence Platform
+            </p>
+          </div>
+
+          <nav className="space-y-2">
+            {menuItems.map((item, index) => {
+              const Icon = item.icon;
+              const active = index === 0;
+
+              return (
+                <button
+                  key={item.label}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
+                    active
+                      ? "bg-cyan-500/10 text-cyan-300"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <Icon size={18} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+            <div className="mb-3 flex items-center gap-2 text-cyan-300">
+              <Activity size={16} />
+              <span className="text-xs font-semibold uppercase">
+                System
+              </span>
+            </div>
+
+            <p className="text-sm font-medium text-white">
+              Monitoring active
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              RSS · NLP · Geo · Crisis
+            </p>
+          </div>
+
+          <button className="mt-6 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-500 transition hover:bg-slate-900 hover:text-white">
+            <Settings size={18} />
+            Settings
+          </button>
+        </aside>
+
+        <section className="min-w-0 flex-1">
+          <div className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
