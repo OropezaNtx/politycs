@@ -26,71 +26,301 @@ const Popup = dynamic(
   { ssr: false }
 );
 
+
+function getMarkerColor(location) {
+  const sentiment = location.sentiment || {};
+
+  const negative = sentiment.negative || 0;
+
+  const total = Object.values(sentiment)
+    .reduce((sum, value) => sum + value, 0);
+
+  const ratio =
+    total > 0
+      ? negative / total
+      : 0;
+
+  if (ratio >= 0.50) {
+    return "#ef4444";
+  }
+
+  if (ratio >= 0.25) {
+    return "#f59e0b";
+  }
+
+  return "#22c55e";
+}
+
+
+function getRiskLabel(location) {
+  const sentiment = location.sentiment || {};
+
+  const negative = sentiment.negative || 0;
+
+  const total = Object.values(sentiment)
+    .reduce((sum, value) => sum + value, 0);
+
+  const ratio =
+    total > 0
+      ? negative / total
+      : 0;
+
+  if (ratio >= 0.50) {
+    return "Alto";
+  }
+
+  if (ratio >= 0.25) {
+    return "Medio";
+  }
+
+  return "Bajo";
+}
+
+
 export default function GeoMap() {
+
   const [locations, setLocations] = useState([]);
+
   const { source } = useSource();
 
+
   useEffect(() => {
+
     async function loadGeoData() {
+
       try {
-        const response = await getGeoAnalytics(source);
-        setLocations(response.locations || []);
+
+        const response =
+          await getGeoAnalytics(source);
+
+        setLocations(
+          response.locations || []
+        );
+
       } catch (error) {
-        console.error("Error loading geo map:", error);
+
+        console.error(
+          "Error loading geo map:",
+          error
+        );
+
         setLocations([]);
       }
+
     }
 
     loadGeoData();
 
-    window.addEventListener("rss-updated", loadGeoData);
+    window.addEventListener(
+      "rss-updated",
+      loadGeoData
+    );
 
     return () => {
-      window.removeEventListener("rss-updated", loadGeoData);
+
+      window.removeEventListener(
+        "rss-updated",
+        loadGeoData
+      );
+
     };
+
   }, [source]);
 
-  return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
-      <h2 className="text-lg font-semibold text-white">Mapa de actividad</h2>
-      <p className="mb-6 text-sm text-slate-400">
-        Zonas detectadas por menciones en fuentes públicas.
-      </p>
 
-      <div className="h-[420px] overflow-hidden rounded-2xl border border-slate-800">
+  return (
+
+    <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
+
+      <div className="mb-5">
+
+        <h2 className="text-lg font-semibold text-white">
+
+          Mapa Inteligente Territorial
+
+        </h2>
+
+        <p className="text-sm text-slate-400">
+
+          Riesgo geográfico basado en conversación pública.
+
+        </p>
+
+      </div>
+
+
+      <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-800">
+
         <MapContainer
           center={[19.4326, -99.1332]}
           zoom={9}
-          scrollWheelZoom={false}
+          scrollWheelZoom={true}
           className="h-full w-full"
         >
+
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
           {locations.map((location) => (
+
             <CircleMarker
+
               key={location.key}
-              center={[location.lat, location.lng]}
-              radius={Math.max(8, Math.min(location.total_mentions * 4, 35))}
+
+              center={[
+                location.lat,
+                location.lng
+              ]}
+
+              radius={
+                Math.max(
+                  8,
+                  Math.min(
+                    location.total_mentions * 4,
+                    35
+                  )
+                )
+              }
+
               pathOptions={{
-                color: "#06b6d4",
-                fillColor: "#06b6d4",
-                fillOpacity: 0.35,
+
+                color:
+                  getMarkerColor(location),
+
+                fillColor:
+                  getMarkerColor(location),
+
+                fillOpacity:0.40,
+
               }}
+
             >
+
               <Popup>
-                <strong>{location.label}</strong>
-                <br />
-                {location.total_mentions} menciones
-                <br />
-                {location.state}
+
+                <div className="space-y-2">
+
+                  <div>
+
+                    <strong>
+
+                      {location.label}
+
+                    </strong>
+
+                  </div>
+
+                  <div>
+
+                    Estado:
+
+                    {" "}
+
+                    {location.state}
+
+                  </div>
+
+                  <div>
+
+                    Menciones:
+
+                    {" "}
+
+                    {location.total_mentions}
+
+                  </div>
+
+                  <div>
+
+                    Riesgo:
+
+                    {" "}
+
+                    <strong>
+
+                      {getRiskLabel(location)}
+
+                    </strong>
+
+                  </div>
+
+                  <hr />
+
+                  <div>
+
+                    Negativas:
+
+                    {" "}
+
+                    {location.sentiment?.negative || 0}
+
+                  </div>
+
+                  <div>
+
+                    Positivas:
+
+                    {" "}
+
+                    {location.sentiment?.positive || 0}
+
+                  </div>
+
+                  <div>
+
+                    Neutrales:
+
+                    {" "}
+
+                    {location.sentiment?.neutral || 0}
+
+                  </div>
+
+                </div>
+
               </Popup>
+
             </CircleMarker>
+
           ))}
+
         </MapContainer>
+
       </div>
+
+
+      <div className="mt-4 flex flex-wrap gap-4 text-xs">
+
+        <div className="flex items-center gap-2">
+
+          <div className="h-3 w-3 rounded-full bg-green-500"></div>
+
+          Riesgo bajo
+
+        </div>
+
+        <div className="flex items-center gap-2">
+
+          <div className="h-3 w-3 rounded-full bg-amber-500"></div>
+
+          Riesgo medio
+
+        </div>
+
+        <div className="flex items-center gap-2">
+
+          <div className="h-3 w-3 rounded-full bg-red-500"></div>
+
+          Riesgo alto
+
+        </div>
+
+      </div>
+
     </article>
+
   );
+
 }
