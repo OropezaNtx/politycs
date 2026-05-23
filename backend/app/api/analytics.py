@@ -460,3 +460,209 @@ def get_crisis_analytics(
         "alerts": alerts[:20],
     }
 
+
+@router.get("/narratives")
+def get_narrative_analytics(
+    source: str = "all",
+    db: Session = Depends(get_db)
+):
+    query = db.query(Post)
+
+    if source and source != "all":
+        query = query.filter(Post.source == source)
+
+    posts = query.all()
+
+    narrative_rules = {
+        "seguridad_publica": {
+            "label": "Seguridad pública",
+            "keywords": {
+                "seguridad",
+                "violencia",
+                "crimen",
+                "policia",
+                "policía",
+                "robo",
+                "homicidio",
+                "delito",
+                "narco",
+            },
+        },
+        "corrupcion_gobierno": {
+            "label": "Corrupción y gobierno",
+            "keywords": {
+                "corrupcion",
+                "corrupción",
+                "gobierno",
+                "funcionario",
+                "contrato",
+                "transparencia",
+                "alcalde",
+                "municipio",
+            },
+        },
+        "movilidad_transporte": {
+            "label": "Movilidad y transporte",
+            "keywords": {
+                "transporte",
+                "metro",
+                "movilidad",
+                "trafico",
+                "tráfico",
+                "combi",
+                "camion",
+                "camión",
+                "vialidad",
+            },
+        },
+        "servicios_urbanos": {
+            "label": "Servicios urbanos",
+            "keywords": {
+                "agua",
+                "luz",
+                "basura",
+                "bache",
+                "drenaje",
+                "servicios",
+                "infraestructura",
+            },
+        },
+        "salud_bienestar": {
+            "label": "Salud y bienestar",
+            "keywords": {
+                "salud",
+                "hospital",
+                "medicina",
+                "vacuna",
+                "imss",
+                "issste",
+                "enfermedad",
+            },
+        },
+        "proceso_electoral": {
+            "label": "Proceso electoral",
+            "keywords": {
+                "elecciones",
+                "campaña",
+                "voto",
+                "partido",
+                "candidato",
+                "morena",
+                "pan",
+                "pri",
+                "prd",
+            },
+        },
+        "economia_local": {
+            "label": "Economía local",
+            "keywords": {
+                "economia",
+                "economía",
+                "empleo",
+                "precio",
+                "inflacion",
+                "inflación",
+                "comercio",
+                "negocio",
+            },
+        },
+    }
+
+    narratives = {}
+
+    for key, config in narrative_rules.items():
+        narratives[key] = {
+            "key": key,
+            "label": config["label"],
+            "total_mentions": 0,
+            "negative_posts": 0,
+            "political_posts": 0,
+            "toxic_posts": 0,
+            "sources": Counter(),
+            "topics": Counter(),
+            "sample_posts": [],
+        }
+
+    for post in posts:
+        text = f"{post.title or ''} {post.raw_content or ''}".lower()
+        post_topics = set(post.topics or [])
+
+        for key, config in narrative_rules.items():
+            keyword_match = any(
+                keyword.lower() in text
+                for keyword in config["keywords"]
+            )
+
+            topic_match = any(
+                topic.lower() in config["keywords"]
+                for topic in post_topics
+            )
+
+            if not keyword_match and not topic_match:
+                continue
+
+            narrative = narratives[key]
+
+            narrative["total_mentions"] += 1
+            narrative["sources"][post.source or "unknown"] += 1
+
+            if post.sentiment == "negative":
+                narrative["negative_posts"] += 1
+
+            if post.political_score is not None and post.political_score > 0:
+                narrative["political_posts"] += 1
+
+            if post.toxicity_score is not None and post.toxicity_score > 0:
+                narrative["toxic_posts"] += 1
+
+            if post.topics:
+                for topic in post.topics:
+                    narrative["topics"][topic] += 1
+
+            if len(narrative["sample_posts"]) < 5:
+                narrative["sample_posts"].append({
+                    "id": post.id,
+                    "title": post.title,
+                    "source": post.source,
+                    "platform": post.platform,
+                    "sentiment": post.sentiment,
+                    "political_score": post.political_score,
+                    "toxicity_score": post.toxicity_score,
+                    "url": post.url,
+                })
+
+    results = []
+
+    for narrative in narratives.values():
+        total = narrative["total_mentions"]
+
+        if total == 0:
+            continue
+
+        results.append({
+            "key": narrative["key"],
+            "label": narrative["label"],
+            "total_mentions": total,
+            "negative_posts": narrative["negative_posts"],
+            "political_posts": narrative["political_posts"],
+            "toxic_posts": narrative["toxic_posts"],
+            "negative_ratio": round(narrative["negative_posts"] / total, 2) if total else 0,
+            "political_ratio": round(narrative["political_posts"] / total, 2) if total else 0,
+            "toxic_ratio": round(narrative["toxic_posts"] / total, 2) if total else 0,
+            "sources": dict(narrative["sources"].most_common(5)),
+            "top_topics": dict(narrative["topics"].most_common(5)),
+            "sample_posts": narrative["sample_posts"],
+        })
+
+    results = sorted(
+        results,
+        key=lambda item: item["total_mentions"],
+        reverse=True
+    )
+
+    return {
+        "source": source,
+        "total_posts_analyzed": len(posts),
+        "total_narratives": len(results),
+        "narratives": results,
+    }
