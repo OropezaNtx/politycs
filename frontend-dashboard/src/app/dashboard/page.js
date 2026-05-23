@@ -30,6 +30,8 @@ import NarrativeIntelligencePanel from "@/components/narratives/NarrativeIntelli
 import EmergingTopicsPanel from "@/components/temporal/EmergingTopicsPanel";
 
 import { getHealth } from "@/services/api";
+import LiveMetricsHeader from "@/components/header/LiveMetricsHeader";
+
 
 export default function DashboardPage() {
   const [backendStatus, setBackendStatus] = useState("Conectando...");
@@ -72,7 +74,8 @@ export default function DashboardPage() {
             {backendStatus}
           </div>
         </div>
-
+        
+        <LiveMetricsHeader />
         <IntelligenceAlertBar />
 
         <RssControls />
