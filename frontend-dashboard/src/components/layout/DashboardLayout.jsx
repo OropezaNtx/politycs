@@ -1,3 +1,8 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import {
   Activity,
   AlertTriangle,
@@ -13,31 +18,39 @@ import {
 const menuItems = [
   {
     label: "Overview",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
     label: "Live Feed",
+    href: "/dashboard/live",
     icon: Radio,
   },
   {
     label: "Geo Intelligence",
+    href: "/dashboard/geo",
     icon: Map,
   },
   {
     label: "Crisis",
+    href: "/dashboard/crisis",
     icon: AlertTriangle,
   },
   {
     label: "Narratives",
+    href: "/dashboard/narratives",
     icon: BrainCircuit,
   },
   {
     label: "Trends",
+    href: "/dashboard/trends",
     icon: BarChart3,
   },
 ];
 
 export default function DashboardLayout({ children }) {
+  const pathname = usePathname();
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="flex min-h-screen">
@@ -57,13 +70,14 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <nav className="space-y-2">
-            {menuItems.map((item, index) => {
+            {menuItems.map((item) => {
               const Icon = item.icon;
-              const active = index === 0;
+              const active = pathname === item.href;
 
               return (
-                <button
-                  key={item.label}
+                <Link
+                  key={item.href}
+                  href={item.href}
                   className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
                     active
                       ? "bg-cyan-500/10 text-cyan-300"
@@ -72,7 +86,7 @@ export default function DashboardLayout({ children }) {
                 >
                   <Icon size={18} />
                   {item.label}
-                </button>
+                </Link>
               );
             })}
           </nav>
