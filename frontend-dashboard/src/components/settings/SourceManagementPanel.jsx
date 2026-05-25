@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { Database, Radio, RefreshCw } from "lucide-react";
 
-import { getAvailableSources, ingestRssNews } from "@/services/api";
+import {
+  getAvailableSources,
+  getConfiguredRssFeeds,
+  ingestRssNews,
+} from "@/services/api";
 
 function formatName(value) {
   const labels = {
@@ -24,6 +28,7 @@ function formatName(value) {
 
 export default function SourceManagementPanel() {
   const [data, setData] = useState(null);
+  const [rssFeeds, setRssFeeds] = useState([]);
   const [loadingSources, setLoadingSources] = useState(false);
   const [updatingRss, setUpdatingRss] = useState(false);
 
@@ -56,8 +61,19 @@ export default function SourceManagementPanel() {
     }
   }
 
+  async function loadConfiguredRssFeeds() {
+    try {
+      const response = await getConfiguredRssFeeds();
+      setRssFeeds(response.feeds || []);
+    } catch (error) {
+      console.error("Error loading configured RSS feeds:", error);
+      setRssFeeds([]);
+    }
+  }
+
   useEffect(() => {
     loadSources();
+    loadConfiguredRssFeeds();
 
     window.addEventListener("rss-updated", loadSources);
 
@@ -214,6 +230,52 @@ export default function SourceManagementPanel() {
           </div>
         </article>
       </div>
+    <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-black/20">
+    <h2 className="mb-4 text-lg font-semibold text-white">
+        RSS Feeds configurados
+    </h2>
+
+    {rssFeeds.length === 0 ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-500">
+        No hay feeds RSS configurados.
+        </div>
+    ) : (
+        <div className="space-y-3">
+        {rssFeeds.map((feed) => (
+            <div
+            key={feed.source}
+            className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+            >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                <p className="font-medium text-white">
+                    {formatName(feed.source)}
+                </p>
+
+                <p className="mt-1 break-all text-xs text-slate-500">
+                    {feed.url}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                    Región: {feed.region || "N/A"} · País: {feed.country || "N/A"}
+                </p>
+                </div>
+
+                <span
+                className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                    feed.enabled
+                    ? "bg-emerald-500/10 text-emerald-300"
+                    : "bg-slate-700 text-slate-300"
+                }`}
+                >
+                {feed.enabled ? "Activo" : "Inactivo"}
+                </span>
+            </div>
+            </div>
+        ))}
+        </div>
+    )}
+    </article>      
     </div>
   );
 }

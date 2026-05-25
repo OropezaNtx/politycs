@@ -91,3 +91,23 @@ export async function getRecentPosts(source = "all") {
   const response = await api.get(`/posts/recent?source=${source}&limit=15`);
   return response.data;
 }
+
+export async function getCrisisAnalytics(source = "all") {
+  const response = await api.get(`/analytics/crisis?source=${source}`);
+  return response.data;
+}
+
+export async function getNarrativeAnalytics(source = "all") {
+  const response = await api.get(`/analytics/narratives?source=${source}`);
+  return response.data;
+}
+
+export async function getEmergingTopics(source = "all") {
+  const response = await api.get(`/analytics/emerging-topics?source=${source}`);
+  return response.data;
+}
+
+export async function getConfiguredRssFeeds() {
+  const response = await api.get("/rss/feeds");
+  return response.data;
+}
