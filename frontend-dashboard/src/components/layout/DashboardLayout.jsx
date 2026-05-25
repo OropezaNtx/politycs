@@ -108,10 +108,17 @@ export default function DashboardLayout({ children }) {
             </p>
           </div>
 
-          <button className="mt-6 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-500 transition hover:bg-slate-900 hover:text-white">
+          <Link
+            href="/dashboard/settings"
+            className={`mt-6 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
+              pathname === "/dashboard/settings"
+                ? "bg-cyan-500/10 text-cyan-300"
+                : "text-slate-500 hover:bg-slate-900 hover:text-white"
+            }`}
+          >
             <Settings size={18} />
             Settings
-          </button>
+          </Link>
         </aside>
 
         <section className="min-w-0 flex-1">
