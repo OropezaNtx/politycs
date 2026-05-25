@@ -4,33 +4,9 @@ from sqlalchemy.orm import Session
 from app.schemas import PostCreate
 from app.services.post_service import create_post
 from bs4 import BeautifulSoup
+from app.config.rss_feeds import RSS_FEEDS
 
-RSS_FEEDS = [
-    {
-        "source": "aristegui",
-        "platform": "rss_news",
-        "url": "https://editorial.aristeguinoticias.com/feed/",
-        "tags": "news,mexico,politics"
-    },
-    {
-        "source": "aristegui_mexico",
-        "platform": "rss_news",
-        "url": "https://editorial.aristeguinoticias.com/category/mexico/feed/",
-        "tags": "news,mexico,politics"
-    },
-    {
-        "source": "proceso",
-        "platform": "rss_news",
-        "url": "https://www.proceso.com.mx/rss/",
-        "tags": "news,mexico,politics"
-    },
-    {
-        "source": "milenio",
-        "platform": "rss_news",
-        "url": "https://www.milenio.com/api/v1/rss",
-        "tags": "news,mexico,politics"
-    }
-]
+
 
 def clean_html_content(text: str | None) -> str:
     if not text:
@@ -127,10 +103,15 @@ def ingest_rss_feed(db: Session, feed_config: dict):
 def ingest_all_rss(db: Session):
     results = []
 
-    for feed_config in RSS_FEEDS:
+    enabled_feeds = [
+        feed_config for feed_config in RSS_FEEDS
+        if feed_config.get("enabled", True)
+    ]
+
+    for feed_config in enabled_feeds:
         results.append(ingest_rss_feed(db, feed_config))
 
     return {
-        "total_sources": len(RSS_FEEDS),
+        "total_sources": len(enabled_feeds),
         "results": results
     }
