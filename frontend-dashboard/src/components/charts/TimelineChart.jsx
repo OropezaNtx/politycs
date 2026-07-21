@@ -44,9 +44,12 @@ export default function TimelineChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        // aquí dejas tu lógica actual
+        const response = await getTimelineAnalytics(source);
+        const formatted = formatTrendsResponse(response);
+        setData(formatted);
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("Error loading timeline:", error);
+        setData([]);
       }
     }
 

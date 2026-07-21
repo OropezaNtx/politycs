@@ -60,7 +60,7 @@ def analyze_all_posts(db: Session = Depends(get_db)):
 
     for post in posts:
 
-        text_to_analyze = post.content or ""
+        text_to_analyze = post.raw_content or post.title or ""
 
         if not text_to_analyze.strip():
             print("EMPTY CONTENT")

@@ -666,3 +666,81 @@ def get_narrative_analytics(
         "total_narratives": len(results),
         "narratives": results,
     }
+
+
+
+@router.get("/emerging-topics")
+def get_emerging_topics(
+    source: str = "all",
+    db: Session = Depends(get_db)
+):
+    query = db.query(Post)
+
+    if source and source != "all":
+        query = query.filter(Post.source == source)
+
+    posts = (
+        query
+        .order_by(Post.scraped_at.desc())
+        .all()
+    )
+
+    if not posts:
+        return {
+            "source": source,
+            "total_posts_analyzed": 0,
+            "emerging_topics": []
+        }
+
+    topic_counter = Counter()
+    recent_topic_counter = Counter()
+
+    recent_posts = posts[:50]
+
+    for post in posts:
+        if post.topics:
+            for topic in post.topics:
+                topic_counter[topic] += 1
+
+    for post in recent_posts:
+        if post.topics:
+            for topic in post.topics:
+                recent_topic_counter[topic] += 1
+
+    emerging_topics = []
+
+    for topic, recent_count in recent_topic_counter.items():
+        historical_count = topic_counter.get(topic, 0)
+
+        if historical_count == 0:
+            continue
+
+        recent_ratio = recent_count / len(recent_posts)
+        historical_ratio = historical_count / len(posts)
+
+        growth_score = round(
+            recent_ratio / historical_ratio,
+            2
+        ) if historical_ratio else 0
+
+        emerging_topics.append({
+            "topic": topic,
+            "recent_count": recent_count,
+            "historical_count": historical_count,
+            "recent_ratio": round(recent_ratio, 2),
+            "historical_ratio": round(historical_ratio, 2),
+            "growth_score": growth_score,
+        })
+
+    emerging_topics = sorted(
+        emerging_topics,
+        key=lambda item: item["growth_score"],
+        reverse=True
+    )
+
+    return {
+        "source": source,
+        "total_posts_analyzed": len(posts),
+        "recent_window": len(recent_posts),
+        "emerging_topics": emerging_topics[:10],
+    }

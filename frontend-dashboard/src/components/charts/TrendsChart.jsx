@@ -13,6 +13,15 @@ import {
 import { getTrendsAnalytics } from "@/services/api";
 import { useSource } from "@/context/SourceContext";
 
+function formatTrends(response) {
+  if (!response?.trends) return [];
+
+  return Object.entries(response.trends).map(([date, topics]) => ({
+    date,
+    total: Object.values(topics).reduce((sum, value) => sum + value, 0),
+  }));
+}
+
 export default function TrendsChart() {
   const [data, setData] = useState([]);
   const { source } = useSource();
@@ -20,9 +29,11 @@ export default function TrendsChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        // aquí dejas tu lógica actual
+        const response = await getTrendsAnalytics(source);
+        setData(formatTrends(response));
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("Error loading trends:", error);
+        setData([]);
       }
     }
 

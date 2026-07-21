@@ -28,9 +28,11 @@ export default function KpiGrid() {
 
     loadSummary();
 
-    const interval = setInterval(loadSummary, 30000);
+    window.addEventListener("rss-updated", loadSummary);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("rss-updated", loadSummary);
+    };
   }, [source]);
 
   const kpis = [

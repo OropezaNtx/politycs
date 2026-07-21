@@ -15,9 +15,18 @@ export default function SentimentChart() {
   useEffect(() => {
     async function loadData() {
       try {
-        // aquí dejas tu lógica actual
+        const response = await getSentimentAnalytics(source);
+        const sentiment = response.sentiment || {};
+
+        const formatted = Object.entries(sentiment).map(([name, value]) => ({
+          name,
+          value,
+        }));
+
+        setData(formatted);
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("Error loading sentiment:", error);
+        setData([]);
       }
     }
 
@@ -54,10 +63,7 @@ export default function SentimentChart() {
                 paddingAngle={4}
               >
                 {data.map((entry, index) => (
-                  <Cell
-                    key={entry.name}
-                    fill={COLORS[index % COLORS.length]}
-                  />
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
 

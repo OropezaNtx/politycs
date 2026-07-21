@@ -8,9 +8,32 @@ from app.services.nlp_service import analyze_text
 
 def create_post(db: Session, post: PostCreate) -> Post | None:
 
-    existing_post = db.query(Post).filter(Post.url == post.url).first()
+    # ==========================
+    # Duplicate validation
+    # ==========================
 
-    if existing_post:
+    existing_url = (
+        db.query(Post)
+        .filter(Post.url == post.url)
+        .first()
+    )
+
+    if existing_url:
+        return None
+
+    normalized_title = (
+        post.title.lower().strip()
+        if post.title
+        else ""
+    )
+
+    existing_title = (
+        db.query(Post)
+        .filter(Post.title.ilike(normalized_title))
+        .first()
+    )
+
+    if existing_title:
         return None
 
     text_to_analyze = post.raw_content or post.title or ""
