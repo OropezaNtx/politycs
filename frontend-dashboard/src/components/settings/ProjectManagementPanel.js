@@ -47,11 +47,11 @@ function toPayload(form) {
   };
 }
 
-function PreviewMetric({ label, value }) {
+function PreviewMetric({ label, value, configured }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+    <div className={`rounded-lg border p-3 ${configured ? "border-slate-800 bg-slate-950/60" : "border-slate-800/60 bg-slate-950/30"}`}>
       <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-white">{value}</p>
+      <p className={`mt-1 text-lg font-semibold ${configured ? "text-white" : "text-slate-600"}`}>{configured ? (value ?? 0) : "No usado"}</p>
     </div>
   );
 }
@@ -234,10 +234,10 @@ export default function ProjectManagementPanel() {
               <p className="mt-1 text-sm text-slate-400">Se analizaron {preview.total_posts_scanned} posts con modo {preview.match_mode === "strict" ? "Estricto" : "Amplio"}.</p>
 
               <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <PreviewMetric label="Keyword" value={preview.diagnostics?.keyword_matches ?? 0} />
-                <PreviewMetric label="Topic" value={preview.diagnostics?.topic_matches ?? 0} />
-                <PreviewMetric label="Territorio" value={preview.diagnostics?.territory_matches ?? 0} />
-                <PreviewMetric label="Fuente" value={preview.diagnostics?.source_matches ?? 0} />
+                <PreviewMetric label="Keyword" value={preview.diagnostics?.keyword_matches} configured={preview.configured_criteria?.keyword} />
+                <PreviewMetric label="Topic" value={preview.diagnostics?.topic_matches} configured={preview.configured_criteria?.topic} />
+                <PreviewMetric label="Territorio" value={preview.diagnostics?.territory_matches} configured={preview.configured_criteria?.territory} />
+                <PreviewMetric label="Fuente" value={preview.diagnostics?.source_matches} configured={preview.configured_criteria?.source} />
               </div>
 
               {!!preview.examples?.length && (
@@ -258,7 +258,7 @@ export default function ProjectManagementPanel() {
                 <div className="mt-4 grid gap-3 lg:grid-cols-2">
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnóstico</p>
-                    <p className="mt-2 text-sm text-slate-300">Si un criterio aparece en 0, ese dato no está siendo encontrado en la base actual. Prueba términos más amplios o elimina temporalmente ese criterio.</p>
+                    <p className="mt-2 text-sm text-slate-300">Solo se evalúan criterios configurados. Un valor 0 significa que ese criterio sí fue solicitado, pero no aparece en los datos procesados. “No usado” no restringe el proyecto.</p>
                   </div>
                   <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sugerencias detectadas</p>
