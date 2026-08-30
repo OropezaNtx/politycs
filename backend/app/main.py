@@ -21,7 +21,7 @@ ensure_monitoring_project_schema(engine)
 app = FastAPI(
     title="Politycs API",
     description="Public intelligence backend for Politycs",
-    version="0.2.2"
+    version="0.2.3"
 )
 
 
@@ -43,7 +43,7 @@ app.add_middleware(
 def root():
     return {
         "message": "Politycs API funcionando correctamente",
-        "version": "0.2.2",
+        "version": "0.2.3",
     }
 
 
@@ -51,7 +51,7 @@ def root():
 def health_check():
     return {
         "status": "ok",
-        "version": "0.2.2",
+        "version": "0.2.3",
     }
 
 
