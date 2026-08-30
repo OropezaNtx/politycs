@@ -2,309 +2,48 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { FolderKanban, Pencil, Plus, Radar, Save, Search, Trash2, X } from "lucide-react";
+import { createMonitoringProject, deleteMonitoringProject, getMonitoringProjects, previewMonitoringProject, updateMonitoringProject } from "@/services/api";
 
-import {
-  createMonitoringProject,
-  deleteMonitoringProject,
-  getMonitoringProjects,
-  previewMonitoringProject,
-  updateMonitoringProject,
-} from "@/services/api";
-
-const EMPTY_FORM = {
-  name: "",
-  description: "",
-  active: true,
-  match_mode: "broad",
-  sources: "",
-  keywords: "",
-  topics: "",
-  territories: "",
-};
-
-function splitCsv(value) {
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
-}
-
-function joinCsv(values) {
-  return (values || []).join(", ");
-}
-
-function notifyProjectChange() {
-  window.dispatchEvent(new CustomEvent("projects-updated"));
-}
-
-function toPayload(form) {
-  return {
-    name: form.name.trim() || "Preview",
-    description: form.description.trim() || null,
-    active: form.active,
-    match_mode: form.match_mode,
-    sources: splitCsv(form.sources),
-    keywords: splitCsv(form.keywords),
-    topics: splitCsv(form.topics),
-    territories: splitCsv(form.territories),
-  };
-}
+const EMPTY_FORM = { name: "", description: "", active: true, match_mode: "broad", sources: "", keywords: "", topics: "", territories: "" };
+const splitCsv = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
+const joinCsv = (values) => (values || []).join(", ");
+const notifyProjectChange = () => window.dispatchEvent(new CustomEvent("projects-updated"));
+const toPayload = (form) => ({ name: form.name.trim() || "Preview", description: form.description.trim() || null, active: form.active, match_mode: form.match_mode, sources: splitCsv(form.sources), keywords: splitCsv(form.keywords), topics: splitCsv(form.topics), territories: splitCsv(form.territories) });
 
 function PreviewMetric({ label, value, configured }) {
-  return (
-    <div className={`rounded-lg border p-3 ${configured ? "border-slate-800 bg-slate-950/60" : "border-slate-800/60 bg-slate-950/30"}`}>
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${configured ? "text-white" : "text-slate-600"}`}>{configured ? (value ?? 0) : "No usado"}</p>
-    </div>
-  );
+  return <div className={`rounded-lg border p-3 ${configured ? "border-slate-800 bg-slate-950/60" : "border-slate-800/60 bg-slate-950/30"}`}><p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p><p className={`mt-1 text-lg font-semibold ${configured ? "text-white" : "text-slate-600"}`}>{configured ? (value ?? 0) : "No usado"}</p></div>;
+}
+
+function GeoExplanation({ post }) {
+  const items = post.geo_evidence || [];
+  if (!items.length) return null;
+  return <div className="mt-3 space-y-2">{items.map((geo) => <div key={`${post.id}-${geo.key}`} className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-3"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium text-cyan-200">{geo.label}</span><span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] uppercase text-slate-300">{geo.type}</span><span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${geo.confidence === "high" ? "bg-emerald-500/10 text-emerald-300" : geo.confidence === "medium" ? "bg-amber-500/10 text-amber-300" : "bg-slate-800 text-slate-400"}`}>Confianza {geo.confidence}</span></div><p className="mt-1 text-xs text-slate-400">{geo.state}{geo.country ? ` · ${geo.country}` : ""}</p><div className="mt-2 flex flex-wrap gap-1.5">{(geo.evidence || []).map((hit, index) => <span key={`${hit.field}-${index}`} className="rounded-md border border-slate-800 bg-slate-950/60 px-2 py-1 text-[11px] text-slate-300">{hit.field}: <span className="text-white">{hit.value}</span></span>)}</div></div>)}</div>;
 }
 
 export default function ProjectManagementPanel() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [error, setError] = useState("");
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [projects, setProjects] = useState([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [previewing, setPreviewing] = useState(false); const [preview, setPreview] = useState(null); const [editingId, setEditingId] = useState(null); const [error, setError] = useState(""); const [form, setForm] = useState(EMPTY_FORM);
+  const loadProjects = useCallback(async () => { setLoading(true); setError(""); try { const data = await getMonitoringProjects(); setProjects(data.projects || []); } catch (e) { console.error(e); setError("No fue posible cargar los proyectos de monitoreo."); } finally { setLoading(false); } }, []);
+  useEffect(() => { const timer = window.setTimeout(() => void loadProjects(), 0); return () => window.clearTimeout(timer); }, [loadProjects]);
+  function updateForm(patch) { setForm((current) => ({ ...current, ...patch })); setPreview(null); }
+  function startEdit(project) { setEditingId(project.id); setPreview(null); setForm({ name: project.name || "", description: project.description || "", active: project.active !== false, match_mode: project.match_mode || "broad", sources: joinCsv(project.sources), keywords: joinCsv(project.keywords), topics: joinCsv(project.topics), territories: joinCsv(project.territories) }); }
+  function resetForm() { setEditingId(null); setPreview(null); setForm(EMPTY_FORM); }
+  async function handlePreview() { setPreviewing(true); setError(""); try { setPreview(await previewMonitoringProject(toPayload(form))); } catch (e) { console.error(e); setPreview(null); setError(e?.response?.data?.detail || "No fue posible probar el alcance."); } finally { setPreviewing(false); } }
+  async function handleSubmit(event) { event.preventDefault(); if (!form.name.trim()) return; setSaving(true); setError(""); try { const payload = toPayload(form); if (editingId) await updateMonitoringProject(editingId, payload); else await createMonitoringProject(payload); resetForm(); await loadProjects(); notifyProjectChange(); } catch (e) { console.error(e); setError(e?.response?.data?.detail || "No fue posible guardar el proyecto."); } finally { setSaving(false); } }
+  async function toggleActive(project) { try { await updateMonitoringProject(project.id, { ...project, active: !project.active }); await loadProjects(); notifyProjectChange(); } catch (e) { console.error(e); setError("No fue posible cambiar el estado del proyecto."); } }
+  async function handleDelete(id) { try { await deleteMonitoringProject(id); if (editingId === id) resetForm(); await loadProjects(); notifyProjectChange(); } catch (e) { console.error(e); setError("No fue posible eliminar el proyecto."); } }
 
-  const loadProjects = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await getMonitoringProjects();
-      setProjects(data.projects || []);
-    } catch (requestError) {
-      console.error(requestError);
-      setError("No fue posible cargar los proyectos de monitoreo.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadProjects(), 0);
-    return () => window.clearTimeout(timer);
-  }, [loadProjects]);
-
-  function updateForm(patch) {
-    setForm((current) => ({ ...current, ...patch }));
-    setPreview(null);
-  }
-
-  function startEdit(project) {
-    setEditingId(project.id);
-    setPreview(null);
-    setForm({
-      name: project.name || "",
-      description: project.description || "",
-      active: project.active !== false,
-      match_mode: project.match_mode || "broad",
-      sources: joinCsv(project.sources),
-      keywords: joinCsv(project.keywords),
-      topics: joinCsv(project.topics),
-      territories: joinCsv(project.territories),
-    });
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setPreview(null);
-    setForm(EMPTY_FORM);
-  }
-
-  async function handlePreview() {
-    setPreviewing(true);
-    setError("");
-    try {
-      const data = await previewMonitoringProject(toPayload(form));
-      setPreview(data);
-    } catch (requestError) {
-      console.error(requestError);
-      setPreview(null);
-      setError(requestError?.response?.data?.detail || "No fue posible probar el alcance.");
-    } finally {
-      setPreviewing(false);
-    }
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    if (!form.name.trim()) return;
-
-    const payload = toPayload(form);
-    setSaving(true);
-    setError("");
-    try {
-      if (editingId) await updateMonitoringProject(editingId, payload);
-      else await createMonitoringProject(payload);
-      resetForm();
-      await loadProjects();
-      notifyProjectChange();
-    } catch (requestError) {
-      console.error(requestError);
-      setError(requestError?.response?.data?.detail || "No fue posible guardar el proyecto.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleActive(project) {
-    try {
-      await updateMonitoringProject(project.id, {
-        name: project.name,
-        description: project.description,
-        active: !project.active,
-        match_mode: project.match_mode || "broad",
-        sources: project.sources || [],
-        keywords: project.keywords || [],
-        topics: project.topics || [],
-        territories: project.territories || [],
-      });
-      await loadProjects();
-      notifyProjectChange();
-    } catch (requestError) {
-      console.error(requestError);
-      setError("No fue posible cambiar el estado del proyecto.");
-    }
-  }
-
-  async function handleDelete(projectId) {
-    try {
-      await deleteMonitoringProject(projectId);
-      if (editingId === projectId) resetForm();
-      await loadProjects();
-      notifyProjectChange();
-    } catch (requestError) {
-      console.error(requestError);
-      setError("No fue posible eliminar el proyecto.");
-    }
-  }
-
-  return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-300"><FolderKanban size={20} /></div>
-        <div>
-          <h2 className="text-lg font-semibold text-white">Monitoring Projects</h2>
-          <p className="text-sm text-slate-400">Configura el alcance, pruébalo contra la base actual y guarda solo cuando el resultado tenga sentido.</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-5 grid gap-3 lg:grid-cols-2">
-        <input value={form.name} onChange={(event) => updateForm({ name: event.target.value })} placeholder="Nombre del proyecto" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.description} onChange={(event) => updateForm({ description: event.target.value })} placeholder="Descripción" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.sources} onChange={(event) => updateForm({ sources: event.target.value })} placeholder="Fuentes opcionales: BBC Mundo, Google News" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.keywords} onChange={(event) => updateForm({ keywords: event.target.value })} placeholder="Keywords: agua, seguridad, candidato" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.topics} onChange={(event) => updateForm({ topics: event.target.value })} placeholder="Topics: agua, elecciones, transporte" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.territories} onChange={(event) => updateForm({ territories: event.target.value })} placeholder="Territorios: Chimalhuacán, Nezahualcóyotl" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-
-        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Matching mode</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {[{ value: "broad", label: "Amplio", help: "Keyword OR topic OR territorio" }, { value: "strict", label: "Estricto", help: "Keyword AND topic AND territorio" }].map((option) => (
-              <button key={option.value} type="button" onClick={() => updateForm({ match_mode: option.value })} className={`rounded-lg border p-3 text-left ${form.match_mode === option.value ? "border-cyan-500/40 bg-cyan-500/10" : "border-slate-800 bg-slate-950/40"}`}>
-                <p className="text-sm font-medium text-white">{option.label}</p>
-                <p className="mt-1 text-xs text-slate-500">{option.help}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-300">
-          <input type="checkbox" checked={form.active} onChange={(event) => updateForm({ active: event.target.checked })} className="h-4 w-4" />
-          Proyecto activo y disponible en el selector global
-        </label>
-
-        <div className="flex flex-wrap gap-2 lg:col-span-2">
-          <button type="button" onClick={handlePreview} disabled={previewing} className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50">
-            <Search size={16} /> {previewing ? "Analizando..." : "Probar alcance"}
-          </button>
-          <button type="submit" disabled={saving || !form.name.trim()} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-50">
-            {editingId ? <Save size={16} /> : <Plus size={16} />} {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear proyecto"}
-          </button>
-          {editingId && <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><X size={16} /> Cancelar</button>}
-        </div>
-      </form>
-
-      {preview && (
-        <div className={`mt-5 rounded-2xl border p-4 ${preview.total_matches ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
-          <div className="flex items-start gap-3">
-            <Radar size={18} className={preview.total_matches ? "text-emerald-300" : "text-amber-300"} />
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-white">Scope Preview · {preview.total_matches} coincidencias</p>
-              <p className="mt-1 text-sm text-slate-400">Se analizaron {preview.total_posts_scanned} posts con modo {preview.match_mode === "strict" ? "Estricto" : "Amplio"}.</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <PreviewMetric label="Keyword" value={preview.diagnostics?.keyword_matches} configured={preview.configured_criteria?.keyword} />
-                <PreviewMetric label="Topic" value={preview.diagnostics?.topic_matches} configured={preview.configured_criteria?.topic} />
-                <PreviewMetric label="Territorio" value={preview.diagnostics?.territory_matches} configured={preview.configured_criteria?.territory} />
-                <PreviewMetric label="Fuente" value={preview.diagnostics?.source_matches} configured={preview.configured_criteria?.source} />
-              </div>
-
-              {!!preview.examples?.length && (
-                <div className="mt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ejemplos que sí coinciden</p>
-                  <div className="mt-2 space-y-2">
-                    {preview.examples.slice(0, 4).map((post) => (
-                      <div key={post.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-                        <p className="text-sm text-white">{post.title}</p>
-                        <p className="mt-1 text-xs text-slate-500">{post.source || "Sin fuente"}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!preview.total_matches && (
-                <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnóstico</p>
-                    <p className="mt-2 text-sm text-slate-300">Solo se evalúan criterios configurados. Un valor 0 significa que ese criterio sí fue solicitado, pero no aparece en los datos procesados. “No usado” no restringe el proyecto.</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sugerencias detectadas</p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                      {(preview.suggestions?.related_terms || []).map((value) => <span key={`r-${value}`} className="rounded-full bg-cyan-500/10 px-2 py-1 text-cyan-300">{value}</span>)}
-                      {(preview.suggestions?.available_territories || []).slice(0, 4).map((value) => <span key={`g-${value}`} className="rounded-full bg-violet-500/10 px-2 py-1 text-violet-300">{value}</span>)}
-                      {(preview.suggestions?.top_topics || []).slice(0, 4).map((value) => <span key={`t-${value}`} className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{value}</span>)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
-
-      <div className="mt-6 space-y-3">
-        {loading && <p className="text-sm text-slate-500">Cargando proyectos...</p>}
-        {!loading && projects.length === 0 && <p className="text-sm text-slate-500">Todavía no hay proyectos configurados.</p>}
-        {projects.map((project) => (
-          <article key={project.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-medium text-white">{project.name}</h3>
-                  <button type="button" onClick={() => toggleActive(project)} className={`rounded-full border px-2 py-0.5 text-xs ${project.active ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-slate-700 bg-slate-800 text-slate-400"}`}>{project.active ? "Activo" : "Inactivo"}</button>
-                  <span className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-2 py-0.5 text-xs text-cyan-300">{project.match_mode === "strict" ? "Estricto" : "Amplio"}</span>
-                </div>
-                {project.description && <p className="mt-1 text-sm text-slate-400">{project.description}</p>}
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                  {(project.sources || []).map((value) => <span key={`s-${value}`} className="rounded-full bg-violet-500/10 px-2 py-1 text-violet-300">{value}</span>)}
-                  {(project.keywords || []).map((value) => <span key={`k-${value}`} className="rounded-full bg-slate-800 px-2 py-1">#{value}</span>)}
-                  {(project.topics || []).map((value) => <span key={`p-${value}`} className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{value}</span>)}
-                  {(project.territories || []).map((value) => <span key={`t-${value}`} className="rounded-full bg-cyan-500/10 px-2 py-1 text-cyan-300">{value}</span>)}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => startEdit(project)} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2 text-cyan-300" aria-label={`Editar ${project.name}`}><Pencil size={16} /></button>
-                <button type="button" onClick={() => handleDelete(project.id)} className="rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-red-300" aria-label={`Eliminar ${project.name}`}><Trash2 size={16} /></button>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
+  return <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="flex items-center gap-3"><div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-300"><FolderKanban size={20} /></div><div><h2 className="text-lg font-semibold text-white">Monitoring Projects</h2><p className="text-sm text-slate-400">Configura el alcance, pruébalo contra la base actual y revisa por qué coincide cada evidencia.</p></div></div>
+    <form onSubmit={handleSubmit} className="mt-5 grid gap-3 lg:grid-cols-2">
+      {[['name','Nombre del proyecto'],['description','Descripción'],['sources','Fuentes opcionales: BBC Mundo, Google News'],['keywords','Keywords: agua, seguridad, candidato'],['topics','Topics: agua, elecciones, transporte'],['territories','Territorios: Chimalhuacán, Nezahualcóyotl']].map(([key, placeholder]) => <input key={key} value={form[key]} onChange={(e) => updateForm({ [key]: e.target.value })} placeholder={placeholder} className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />)}
+      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Matching mode</p><div className="mt-3 grid grid-cols-2 gap-2">{[{value:'broad',label:'Amplio',help:'Keyword OR topic OR territorio'},{value:'strict',label:'Estricto',help:'Keyword AND topic AND territorio'}].map((o) => <button key={o.value} type="button" onClick={() => updateForm({match_mode:o.value})} className={`rounded-lg border p-3 text-left ${form.match_mode===o.value?'border-cyan-500/40 bg-cyan-500/10':'border-slate-800 bg-slate-950/40'}`}><p className="text-sm font-medium text-white">{o.label}</p><p className="mt-1 text-xs text-slate-500">{o.help}</p></button>)}</div></div>
+      <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-300"><input type="checkbox" checked={form.active} onChange={(e)=>updateForm({active:e.target.checked})} className="h-4 w-4"/>Proyecto activo y disponible en el selector global</label>
+      <div className="flex flex-wrap gap-2 lg:col-span-2"><button type="button" onClick={handlePreview} disabled={previewing} className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm font-semibold text-amber-300"><Search size={16}/>{previewing?'Analizando...':'Probar alcance'}</button><button type="submit" disabled={saving||!form.name.trim()} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950">{editingId?<Save size={16}/>:<Plus size={16}/>} {saving?'Guardando...':editingId?'Guardar cambios':'Crear proyecto'}</button>{editingId&&<button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><X size={16}/>Cancelar</button>}</div>
+    </form>
+    {preview&&<div className={`mt-5 rounded-2xl border p-4 ${preview.total_matches?'border-emerald-500/20 bg-emerald-500/5':'border-amber-500/20 bg-amber-500/5'}`}><div className="flex gap-3"><Radar size={18} className={preview.total_matches?'text-emerald-300':'text-amber-300'}/><div className="min-w-0 flex-1"><p className="font-medium text-white">Scope Preview · {preview.total_matches} coincidencias</p><p className="mt-1 text-sm text-slate-400">Se analizaron {preview.total_posts_scanned} posts con modo {preview.match_mode==='strict'?'Estricto':'Amplio'}.</p><div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><PreviewMetric label="Keyword" value={preview.diagnostics?.keyword_matches} configured={preview.configured_criteria?.keyword}/><PreviewMetric label="Topic" value={preview.diagnostics?.topic_matches} configured={preview.configured_criteria?.topic}/><PreviewMetric label="Territorio" value={preview.diagnostics?.territory_matches} configured={preview.configured_criteria?.territory}/><PreviewMetric label="Fuente" value={preview.diagnostics?.source_matches} configured={preview.configured_criteria?.source}/></div>
+      {!!preview.examples?.length&&<div className="mt-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ejemplos que sí coinciden · explicación</p><div className="mt-2 space-y-3">{preview.examples.slice(0,4).map((post)=><div key={post.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3"><div className="flex flex-wrap gap-2">{(post.matched_by||[]).map((reason)=><span key={reason} className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] uppercase text-cyan-300">match: {reason}</span>)}</div><p className="mt-2 text-sm text-white">{post.title}</p><p className="mt-1 text-xs text-slate-500">{post.source||'Sin fuente'}</p><GeoExplanation post={post}/></div>)}</div></div>}
+      {!preview.total_matches&&<div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Diagnóstico</p><p className="mt-2 text-sm text-slate-300">Un 0 indica que el criterio configurado no aparece en los datos procesados. “No usado” no restringe el proyecto.</p></div>}</div></div></div>}
+    {error&&<p className="mt-4 text-sm text-red-300">{error}</p>}
+    <div className="mt-6 space-y-3">{loading&&<p className="text-sm text-slate-500">Cargando proyectos...</p>}{!loading&&projects.length===0&&<p className="text-sm text-slate-500">Todavía no hay proyectos configurados.</p>}{projects.map((project)=><article key={project.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-white">{project.name}</h3><button type="button" onClick={()=>toggleActive(project)} className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">{project.active?'Activo':'Inactivo'}</button><span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">{project.match_mode==='strict'?'Estricto':'Amplio'}</span></div><p className="mt-1 text-sm text-slate-400">{project.description||'Sin descripción'}</p><p className="mt-2 text-xs text-slate-500">Keywords: {(project.keywords||[]).join(', ')||'todas'} · Topics: {(project.topics||[]).join(', ')||'todos'} · Territorios: {(project.territories||[]).join(', ')||'todos'}</p></div><div className="flex gap-2"><button type="button" onClick={()=>startEdit(project)} className="rounded-lg border border-slate-700 p-2 text-slate-300"><Pencil size={15}/></button><button type="button" onClick={()=>handleDelete(project.id)} className="rounded-lg border border-red-500/20 p-2 text-red-300"><Trash2 size={15}/></button></div></div></article>)}</div>
+  </section>;
 }
