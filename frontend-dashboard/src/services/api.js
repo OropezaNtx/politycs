@@ -76,6 +76,7 @@ export async function getIntelligenceEvidence({ source = "all", projectId = null
 }
 
 export async function getMonitoringProjects() { const response = await api.get("/projects"); return response.data; }
+export async function previewMonitoringProject(payload) { const response = await api.post("/projects/preview", payload); return response.data; }
 export async function createMonitoringProject(payload) { const response = await api.post("/projects", payload); return response.data; }
 export async function updateMonitoringProject(projectId, payload) { const response = await api.put(`/projects/${projectId}`, payload); return response.data; }
 export async function deleteMonitoringProject(projectId) { const response = await api.delete(`/projects/${projectId}`); return response.data; }
