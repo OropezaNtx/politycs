@@ -11,6 +11,7 @@ import GeoMap from "@/components/geo/GeoMap";
 
 import PlatformSummaryCard from "@/components/intelligence/PlatformSummaryCard";
 import IntelligenceAlertBar from "@/components/intelligence/IntelligenceAlertBar";
+import IntelligenceBriefPanel from "@/components/intelligence/IntelligenceBriefPanel";
 
 import LiveMetricsHeader from "@/components/header/LiveMetricsHeader";
 
@@ -63,6 +64,8 @@ export default function DashboardPage() {
             {backendStatus}
           </div>
         </div>
+
+        <IntelligenceBriefPanel />
 
         <LiveMetricsHeader />
 
