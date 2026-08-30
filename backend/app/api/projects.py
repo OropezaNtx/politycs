@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.monitoring_project import MonitoringProject
+from app.models.post import Post
+from app.services.monitoring_scope_service import preview_scope
 
 
 router = APIRouter(prefix="/projects", tags=["Monitoring Projects"])
@@ -42,6 +44,15 @@ def serialize_project(project: MonitoringProject) -> dict:
 def list_projects(db: Session = Depends(get_db)):
     projects = db.query(MonitoringProject).order_by(MonitoringProject.id.asc()).all()
     return {"projects": [serialize_project(project) for project in projects]}
+
+
+@router.post("/preview")
+def preview_project_scope(payload: MonitoringProjectPayload, db: Session = Depends(get_db)):
+    posts = db.query(Post).all()
+    return {
+        "scope": payload.model_dump(),
+        **preview_scope(posts, payload),
+    }
 
 
 @router.get("/{project_id}")
