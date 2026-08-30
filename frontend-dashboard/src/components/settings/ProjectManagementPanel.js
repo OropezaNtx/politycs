@@ -51,7 +51,10 @@ export default function ProjectManagementPanel() {
   }, []);
 
   useEffect(() => {
-    loadProjects();
+    const timer = window.setTimeout(() => {
+      void loadProjects();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadProjects]);
 
   async function handleSubmit(event) {
