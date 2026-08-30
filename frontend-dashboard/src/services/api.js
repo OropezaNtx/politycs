@@ -47,10 +47,10 @@ export async function getCrisisIntelligenceV2(options = {}) {
   return response.data;
 }
 
-export async function getGeoIntelligenceV2({ source = "all", projectId = null, windowHours = 168 } = {}) {
-  const params = { source, window_hours: windowHours };
+export async function getGeoIntelligenceV2({ source = "all", projectId = null, windowHours = 168, minConfidence = "low" } = {}) {
+  const params = { source, window_hours: windowHours, min_confidence: minConfidence };
   if (projectId) params.project_id = projectId;
-  const response = await api.get(`${PROJECT_INTELLIGENCE}/geo`, { params });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/geo21`, { params });
   return response.data;
 }
 
