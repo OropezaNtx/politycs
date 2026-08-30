@@ -30,7 +30,12 @@ export default function NarrativeIntelligenceV2Panel() {
     }
   }, [source, projectId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
