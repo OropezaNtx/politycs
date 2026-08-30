@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.monitoring_project import MonitoringProject
 from app.models.post import Post
-from app.services.geo_service import detect_locations
+from app.services.geo_service import detect_locations, normalize_text
+from app.services.monitoring_scope_service import scope_matches_post
 
 
 router = APIRouter(prefix="/intelligence/v2", tags=["Intelligence V2"])
@@ -41,35 +42,7 @@ def _project(db: Session, project_id: int | None) -> MonitoringProject | None:
 def _matches_project(post: Post, project: MonitoringProject | None) -> bool:
     if project is None:
         return True
-
-    sources = {str(value).lower() for value in (project.sources or [])}
-    keywords = {str(value).lower() for value in (project.keywords or [])}
-    topics = {str(value).lower() for value in (project.topics or [])}
-    territories = {str(value).lower() for value in (project.territories or [])}
-
-    if sources and (post.source or "").lower() not in sources:
-        return False
-
-    text = f"{post.title or ''} {post.raw_content or ''}".lower()
-    post_topics = {str(value).lower() for value in (post.topics or [])}
-
-    if keywords and not any(keyword in text for keyword in keywords):
-        return False
-
-    if topics and not post_topics.intersection(topics):
-        return False
-
-    if territories:
-        locations = detect_locations(text)
-        detected = {
-            str(location.get("key", "")).lower() for location in locations
-        } | {
-            str(location.get("label", "")).lower() for location in locations
-        }
-        if not detected.intersection(territories):
-            return False
-
-    return True
+    return scope_matches_post(post, project)
 
 
 def _posts(db: Session, source: str, project: MonitoringProject | None) -> list[Post]:
@@ -375,16 +348,16 @@ def evidence(
 ):
     project = _project(db, project_id)
     posts = _posts(db, source, project)
-    topic_lower = topic.lower() if topic else None
-    territory_lower = territory.lower() if territory else None
+    topic_lower = normalize_text(topic) if topic else None
+    territory_lower = normalize_text(territory) if territory else None
     selected = []
 
     for post in sorted(posts, key=lambda value: _post_time(value) or datetime.min.replace(tzinfo=timezone.utc), reverse=True):
-        if topic_lower and topic_lower not in {str(value).lower() for value in (post.topics or [])}:
+        if topic_lower and topic_lower not in {normalize_text(value) for value in (post.topics or [])}:
             continue
         if territory_lower:
             locations = detect_locations(f"{post.title or ''} {post.raw_content or ''}")
-            keys = {str(item["key"]).lower() for item in locations} | {str(item["label"]).lower() for item in locations}
+            keys = {normalize_text(item["key"]) for item in locations} | {normalize_text(item["label"]) for item in locations}
             if territory_lower not in keys:
                 continue
         selected.append({
