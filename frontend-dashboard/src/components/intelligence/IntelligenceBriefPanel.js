@@ -46,7 +46,10 @@ export default function IntelligenceBriefPanel() {
   }, [source, projectId, windowHours]);
 
   useEffect(() => {
-    loadBrief();
+    const timer = window.setTimeout(() => {
+      void loadBrief();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadBrief]);
 
   return (
