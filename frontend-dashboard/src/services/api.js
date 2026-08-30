@@ -28,32 +28,41 @@ function intelligenceParams({ source = "all", projectId = null, windowHours = 24
   return params;
 }
 
+const PROJECT_INTELLIGENCE = "/intelligence/v2/project";
+
+export async function getProjectScope({ source = "all", projectId = null } = {}) {
+  const params = { source };
+  if (projectId) params.project_id = projectId;
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/scope`, { params });
+  return response.data;
+}
+
 export async function getTemporalIntelligence(options = {}) {
-  const response = await api.get("/intelligence/v2/temporal", { params: intelligenceParams(options) });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/temporal`, { params: intelligenceParams(options) });
   return response.data;
 }
 
 export async function getCrisisIntelligenceV2(options = {}) {
-  const response = await api.get("/intelligence/v2/crisis", { params: intelligenceParams(options) });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/crisis`, { params: intelligenceParams(options) });
   return response.data;
 }
 
 export async function getGeoIntelligenceV2({ source = "all", projectId = null, windowHours = 168 } = {}) {
   const params = { source, window_hours: windowHours };
   if (projectId) params.project_id = projectId;
-  const response = await api.get("/intelligence/v2/geo", { params });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/geo`, { params });
   return response.data;
 }
 
-export async function getNarrativeIntelligenceV2({ source = "all", projectId = null } = {}) {
-  const params = { source };
+export async function getNarrativeIntelligenceV2({ source = "all", projectId = null, windowHours = 168 } = {}) {
+  const params = { source, window_hours: windowHours };
   if (projectId) params.project_id = projectId;
-  const response = await api.get("/intelligence/v2/narratives", { params });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/narratives`, { params });
   return response.data;
 }
 
 export async function getIntelligenceBrief(options = {}) {
-  const response = await api.get("/intelligence/v2/brief", { params: intelligenceParams(options) });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/brief`, { params: intelligenceParams(options) });
   return response.data;
 }
 
@@ -62,7 +71,7 @@ export async function getIntelligenceEvidence({ source = "all", projectId = null
   if (projectId) params.project_id = projectId;
   if (topic) params.topic = topic;
   if (territory) params.territory = territory;
-  const response = await api.get("/intelligence/v2/evidence", { params });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/evidence`, { params });
   return response.data;
 }
 
