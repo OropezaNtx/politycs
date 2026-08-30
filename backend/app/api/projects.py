@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -13,6 +15,7 @@ class MonitoringProjectPayload(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     description: str | None = Field(default=None, max_length=500)
     active: bool = True
+    match_mode: Literal["broad", "strict"] = "broad"
     sources: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
     topics: list[str] = Field(default_factory=list)
@@ -25,6 +28,7 @@ def serialize_project(project: MonitoringProject) -> dict:
         "name": project.name,
         "description": project.description,
         "active": project.active,
+        "match_mode": project.match_mode or "broad",
         "sources": project.sources or [],
         "keywords": project.keywords or [],
         "topics": project.topics or [],
@@ -66,6 +70,14 @@ def update_project(project_id: int, payload: MonitoringProjectPayload, db: Sessi
     project = db.query(MonitoringProject).filter(MonitoringProject.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    duplicate = (
+        db.query(MonitoringProject)
+        .filter(MonitoringProject.name == payload.name, MonitoringProject.id != project_id)
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="A project with this name already exists")
 
     for field, value in payload.model_dump().items():
         setattr(project, field, value)
