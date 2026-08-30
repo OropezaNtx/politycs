@@ -6,11 +6,14 @@ import { BrainCircuit, Network, ShieldAlert } from "lucide-react";
 import { getNarrativeIntelligenceV2 } from "@/services/api";
 import { useProject } from "@/context/ProjectContext";
 import { useSource } from "@/context/SourceContext";
+import { useTimeWindow } from "@/context/TimeWindowContext";
 import EvidenceList from "@/components/intelligence/EvidenceList";
+import TimeWindowSelector from "@/components/intelligence/TimeWindowSelector";
 
 export default function NarrativeIntelligenceV2Panel() {
   const { projectId } = useProject();
   const { source } = useSource();
+  const { windowHours } = useTimeWindow();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +21,7 @@ export default function NarrativeIntelligenceV2Panel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getNarrativeIntelligenceV2({ source, projectId });
+      const response = await getNarrativeIntelligenceV2({ source, projectId, windowHours });
       setData(response);
       setSelected(response.narratives?.[0] || null);
     } catch (error) {
@@ -28,26 +31,27 @@ export default function NarrativeIntelligenceV2Panel() {
     } finally {
       setLoading(false);
     }
-  }, [source, projectId]);
+  }, [source, projectId, windowHours]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void load();
-    }, 0);
+    const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-300"><BrainCircuit size={15} /> Narrative Intelligence V2</div>
           <h2 className="mt-2 text-xl font-semibold text-white">Dominant public narratives</h2>
           <p className="mt-1 text-sm text-slate-400">Agrupa conversación por marcos narrativos y expone volumen, negatividad, fuentes y evidencia.</p>
         </div>
-        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-right">
-          <p className="text-xs uppercase tracking-wide text-violet-300">Narrativas</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{data?.total_narratives ?? 0}</p>
+        <div className="flex flex-col items-start gap-3 lg:items-end">
+          <TimeWindowSelector tone="violet" />
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-right">
+            <p className="text-xs uppercase tracking-wide text-violet-300">Narrativas</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{data?.total_narratives ?? 0}</p>
+          </div>
         </div>
       </div>
 
@@ -71,7 +75,7 @@ export default function NarrativeIntelligenceV2Panel() {
               </div>
             </button>
           ))}
-          {!loading && !data?.narratives?.length && <p className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-500">No se detectaron narrativas para el alcance activo.</p>}
+          {!loading && !data?.narratives?.length && <p className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-500">No se detectaron narrativas para el alcance activo en la ventana seleccionada.</p>}
         </div>
 
         <div className="space-y-3">
