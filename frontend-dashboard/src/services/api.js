@@ -43,7 +43,7 @@ export async function getTemporalIntelligence(options = {}) {
 }
 
 export async function getCrisisIntelligenceV2(options = {}) {
-  const response = await api.get(`${PROJECT_INTELLIGENCE}/crisis`, { params: intelligenceParams(options) });
+  const response = await api.get(`${PROJECT_INTELLIGENCE}/crisis22`, { params: intelligenceParams(options) });
   return response.data;
 }
 
