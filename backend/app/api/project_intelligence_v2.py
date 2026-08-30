@@ -1,6 +1,5 @@
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-import unicodedata
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -8,7 +7,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.monitoring_project import MonitoringProject
 from app.models.post import Post
-from app.services.geo_service import detect_locations
+from app.services.geo_service import detect_locations, normalize_text
+from app.services.monitoring_scope_service import evaluate_post_scope, scope_matches_post
 from app.api.intelligence_v2 import _temporal_payload, _crisis_payload, _geo_payload
 from app.api.narratives_v2 import NARRATIVE_RULES, _matches_narrative
 
@@ -28,9 +28,7 @@ def _post_time(post: Post) -> datetime | None:
 
 
 def _normalize(value: str | None) -> str:
-    text = (value or "").lower().strip()
-    text = unicodedata.normalize("NFD", text)
-    return "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return normalize_text(value).strip()
 
 
 def _project(db: Session, project_id: int | None) -> MonitoringProject | None:
@@ -43,53 +41,24 @@ def _project(db: Session, project_id: int | None) -> MonitoringProject | None:
 
 
 def _signals(post: Post, project: MonitoringProject) -> dict:
-    text = _normalize(f"{post.title or ''} {post.raw_content or ''}")
-    source = _normalize(post.source)
-    post_topics = {_normalize(str(value)) for value in (post.topics or [])}
-    locations = detect_locations(f"{post.title or ''} {post.raw_content or ''}")
-    detected_territories = {
-        _normalize(str(location.get("key", ""))) for location in locations
-    } | {
-        _normalize(str(location.get("label", ""))) for location in locations
-    }
-
-    sources = {_normalize(str(value)) for value in (project.sources or [])}
-    keywords = {_normalize(str(value)) for value in (project.keywords or [])}
-    topics = {_normalize(str(value)) for value in (project.topics or [])}
-    territories = {_normalize(str(value)) for value in (project.territories or [])}
-
+    evaluation = evaluate_post_scope(post, project)
+    criteria = evaluation["criteria"]
     return {
-        "source_required": bool(sources),
-        "source": (not sources) or source in sources,
-        "keyword_required": bool(keywords),
-        "keyword": (not keywords) or any(keyword in text for keyword in keywords),
-        "topic_required": bool(topics),
-        "topic": (not topics) or bool(post_topics.intersection(topics)),
-        "territory_required": bool(territories),
-        "territory": (not territories) or bool(detected_territories.intersection(territories)),
+        "source_required": bool(project.sources or []),
+        "source": criteria["source"],
+        "keyword_required": bool(project.keywords or []),
+        "keyword": criteria["keyword"],
+        "topic_required": bool(project.topics or []),
+        "topic": criteria["topic"],
+        "territory_required": bool(project.territories or []),
+        "territory": criteria["territory"],
     }
 
 
 def _matches(post: Post, project: MonitoringProject | None) -> bool:
     if project is None:
         return True
-
-    signals = _signals(post, project)
-    if not signals["source"]:
-        return False
-
-    semantic_checks = []
-    for name in ("keyword", "topic", "territory"):
-        if signals[f"{name}_required"]:
-            semantic_checks.append(signals[name])
-
-    if not semantic_checks:
-        return True
-
-    mode = (project.match_mode or "broad").lower()
-    if mode == "strict":
-        return all(semantic_checks)
-    return any(semantic_checks)
+    return scope_matches_post(post, project)
 
 
 def _posts(db: Session, source: str, project: MonitoringProject | None) -> list[Post]:
@@ -168,12 +137,13 @@ def project_scope(
     diagnostics = None
     if project:
         all_posts = db.query(Post).all()
+        all_signals = [_signals(post, project) for post in all_posts]
         diagnostics = {
             "total_database_posts": len(all_posts),
-            "source_matches": sum(1 for post in all_posts if _signals(post, project)["source"]),
-            "keyword_matches": sum(1 for post in all_posts if _signals(post, project)["keyword"] and _signals(post, project)["keyword_required"]),
-            "topic_matches": sum(1 for post in all_posts if _signals(post, project)["topic"] and _signals(post, project)["topic_required"]),
-            "territory_matches": sum(1 for post in all_posts if _signals(post, project)["territory"] and _signals(post, project)["territory_required"]),
+            "source_matches": sum(1 for signal in all_signals if signal["source"]),
+            "keyword_matches": sum(1 for signal in all_signals if signal["keyword"] and signal["keyword_required"]),
+            "topic_matches": sum(1 for signal in all_signals if signal["topic"] and signal["topic_required"]),
+            "territory_matches": sum(1 for signal in all_signals if signal["territory"] and signal["territory_required"]),
         }
 
     return {
