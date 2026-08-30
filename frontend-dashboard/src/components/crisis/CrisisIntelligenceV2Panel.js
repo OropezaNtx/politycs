@@ -6,7 +6,9 @@ import { AlertTriangle, Gauge, MapPin, ShieldAlert, TrendingUp } from "lucide-re
 import { getCrisisIntelligenceV2 } from "@/services/api";
 import { useProject } from "@/context/ProjectContext";
 import { useSource } from "@/context/SourceContext";
+import { useTimeWindow } from "@/context/TimeWindowContext";
 import EvidenceList from "@/components/intelligence/EvidenceList";
+import TimeWindowSelector from "@/components/intelligence/TimeWindowSelector";
 
 function riskTone(level) {
   if (level === "high") return "border-red-500/30 bg-red-500/10 text-red-300";
@@ -18,9 +20,16 @@ function factorLabel(value) {
   return value.replaceAll("_", " ");
 }
 
+function windowLabel(hours) {
+  if (hours === 720) return "30 días";
+  if (hours === 168) return "7 días";
+  return `${hours} horas`;
+}
+
 export default function CrisisIntelligenceV2Panel() {
   const { projectId } = useProject();
   const { source } = useSource();
+  const { windowHours } = useTimeWindow();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +37,7 @@ export default function CrisisIntelligenceV2Panel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getCrisisIntelligenceV2({ source, projectId, windowHours: 24, baselineDays: 30 });
+      const response = await getCrisisIntelligenceV2({ source, projectId, windowHours, baselineDays: 30 });
       setData(response);
       setSelected(response.alerts?.[0] || null);
     } catch (error) {
@@ -38,7 +47,7 @@ export default function CrisisIntelligenceV2Panel() {
     } finally {
       setLoading(false);
     }
-  }, [source, projectId]);
+  }, [source, projectId, windowHours]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -47,16 +56,19 @@ export default function CrisisIntelligenceV2Panel() {
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-300"><ShieldAlert size={15} /> Crisis Intelligence V2.2</div>
           <h2 className="mt-2 text-xl font-semibold text-white">Calibrated, explainable risk detection</h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-400">Combina señales del contenido con aceleración temporal, diversidad de fuentes y confianza territorial. El score global resume intensidad y convergencia de señales, no una predicción de crisis.</p>
         </div>
-        <div className={`rounded-xl border px-4 py-3 text-center ${riskTone(data?.risk_level)}`}>
-          <p className="text-[11px] uppercase tracking-wide opacity-70">Risk level</p>
-          <p className="mt-1 text-lg font-bold uppercase">{data?.risk_level || (loading ? "..." : "low")}</p>
-          <p className="mt-1 text-xs opacity-70">Score {data?.overall_risk_score ?? 0}/10</p>
+        <div className="flex flex-wrap items-start gap-3">
+          <TimeWindowSelector tone="red" />
+          <div className={`rounded-xl border px-4 py-3 text-center ${riskTone(data?.risk_level)}`}>
+            <p className="text-[11px] uppercase tracking-wide opacity-70">Risk level</p>
+            <p className="mt-1 text-lg font-bold uppercase">{data?.risk_level || (loading ? "..." : "low")}</p>
+            <p className="mt-1 text-xs opacity-70">Score {data?.overall_risk_score ?? 0}/10</p>
+          </div>
         </div>
       </div>
 
@@ -92,7 +104,7 @@ export default function CrisisIntelligenceV2Panel() {
               </div>
             </button>
           ))}
-          {!loading && !data?.alerts?.length && <p className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-500">No se detectaron señales que superen el umbral de alerta en las últimas 24 horas para este alcance.</p>}
+          {!loading && !data?.alerts?.length && <p className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-500">No se detectaron señales que superen el umbral de alerta en los últimos {windowLabel(windowHours)} para este alcance.</p>}
         </div>
 
         <div className="space-y-3">
