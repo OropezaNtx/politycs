@@ -11,6 +11,7 @@ import GeoMap from "@/components/geo/GeoMap";
 import PlatformSummaryCard from "@/components/intelligence/PlatformSummaryCard";
 import IntelligenceAlertBar from "@/components/intelligence/IntelligenceAlertBar";
 import IntelligenceBriefPanel from "@/components/intelligence/IntelligenceBriefPanel";
+import ScopeStatusPanel from "@/components/intelligence/ScopeStatusPanel";
 import LiveMetricsHeader from "@/components/header/LiveMetricsHeader";
 import CrisisDetectionPanel from "@/components/crisis/CrisisDetectionPanel";
 import NarrativeIntelligencePanel from "@/components/narratives/NarrativeIntelligencePanel";
@@ -55,6 +56,7 @@ export default function DashboardPage() {
         </div>
 
         <IntelligenceBriefPanel />
+        <ScopeStatusPanel />
 
         {activeProject && (
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
