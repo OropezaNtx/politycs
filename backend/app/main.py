@@ -9,16 +9,19 @@ from app.api.rss import router as rss_router
 from app.api.geo import router as geo_router
 from app.api.intelligence_v2 import router as intelligence_v2_router
 from app.api.narratives_v2 import router as narratives_v2_router
+from app.api.project_intelligence_v2 import router as project_intelligence_v2_router
 from app.api.projects import router as projects_router
+from app.models.monitoring_project import ensure_monitoring_project_schema
 from app.services.scheduler_service import start_scheduler
 
 Base.metadata.create_all(bind=engine)
+ensure_monitoring_project_schema(engine)
 
 
 app = FastAPI(
     title="Politycs API",
     description="Public intelligence backend for Politycs",
-    version="0.2.1"
+    version="0.2.2"
 )
 
 
@@ -40,7 +43,7 @@ app.add_middleware(
 def root():
     return {
         "message": "Politycs API funcionando correctamente",
-        "version": "0.2.1",
+        "version": "0.2.2",
     }
 
 
@@ -48,7 +51,7 @@ def root():
 def health_check():
     return {
         "status": "ok",
-        "version": "0.2.1",
+        "version": "0.2.2",
     }
 
 
@@ -59,4 +62,5 @@ app.include_router(rss_router)
 app.include_router(geo_router)
 app.include_router(intelligence_v2_router)
 app.include_router(narratives_v2_router)
+app.include_router(project_intelligence_v2_router)
 app.include_router(projects_router)
