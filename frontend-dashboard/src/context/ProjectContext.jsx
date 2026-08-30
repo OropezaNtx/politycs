@@ -35,10 +35,17 @@ export function ProjectProvider({ children }) {
   }, [projectId]);
 
   useEffect(() => {
-    refreshProjects();
-    const handleProjectsUpdated = () => refreshProjects();
+    const initialTimer = window.setTimeout(() => {
+      void refreshProjects();
+    }, 0);
+    const handleProjectsUpdated = () => {
+      void refreshProjects();
+    };
     window.addEventListener("projects-updated", handleProjectsUpdated);
-    return () => window.removeEventListener("projects-updated", handleProjectsUpdated);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.removeEventListener("projects-updated", handleProjectsUpdated);
+    };
   }, [refreshProjects]);
 
   const setProjectId = useCallback((value) => {
