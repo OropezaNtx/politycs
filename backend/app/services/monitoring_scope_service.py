@@ -3,10 +3,9 @@ from __future__ import annotations
 from collections import Counter
 from difflib import get_close_matches
 from typing import Any
-import unicodedata
 
 from app.models.post import Post
-from app.services.geo_service import detect_locations, GEO_KEYWORDS, normalize_text
+from app.services.geo_service import GEO_KEYWORDS, detect_locations, normalize_text
 
 
 def _norm(value: Any) -> str:
@@ -39,6 +38,17 @@ def _flatten_entities(entities) -> list[str]:
     return values
 
 
+def _location_terms(location: dict) -> set[str]:
+    terms = {
+        _norm(location.get("key")),
+        _norm(location.get("label")),
+        _norm(location.get("state")),
+    }
+    config = GEO_KEYWORDS.get(location.get("key"), {})
+    terms.update(_norm(alias) for alias in config.get("aliases", []))
+    return {value for value in terms if value}
+
+
 def post_scope_facts(post: Post) -> dict:
     text_parts = [post.title or "", post.raw_content or "", post.tags or ""]
     text_parts.extend(str(value) for value in (post.keywords or []))
@@ -49,12 +59,40 @@ def post_scope_facts(post: Post) -> dict:
     post_keywords = _norm_set(post.keywords)
     source = _norm(post.source)
 
-    locations = detect_locations(f"{post.title or ''} {post.raw_content or ''}")
+    raw_locations = detect_locations(f"{post.title or ''} {post.raw_content or ''}")
+    semantic_locations = detect_locations(" ".join(text_parts))
+    locations_by_key = {}
+    for location in [*raw_locations, *semantic_locations]:
+        locations_by_key[location.get("key") or location.get("label")] = location
+    locations = list(locations_by_key.values())
+
     territory_values = set()
     for location in locations:
-        territory_values.add(_norm(location.get("key")))
-        territory_values.add(_norm(location.get("label")))
-        territory_values.add(_norm(location.get("state")))
+        territory_values.update(_location_terms(location))
+
+    # If an NLP keyword/entity contains a known geographic alias, keep it as a
+    # territorial fact even when the raw article body did not contain the term.
+    for key, config in GEO_KEYWORDS.items():
+        aliases = {_norm(alias) for alias in config.get("aliases", [])}
+        aliases.add(_norm(key))
+        aliases.add(_norm(config.get("label")))
+        if any(alias and alias in normalized_text for alias in aliases):
+            territory_values.update({
+                _norm(key),
+                _norm(config.get("label")),
+                _norm(config.get("state")),
+                *aliases,
+            })
+            if key not in locations_by_key:
+                locations.append({
+                    "key": key,
+                    "label": config.get("label"),
+                    "type": config.get("type"),
+                    "state": config.get("state"),
+                    "lat": config.get("lat"),
+                    "lng": config.get("lng"),
+                    "inferred": True,
+                })
 
     return {
         "text": normalized_text,
@@ -85,6 +123,12 @@ def evaluate_post_scope(post: Post, scope) -> dict:
         territory and territory in facts["text"] for territory in territories
     )
 
+    configured = {
+        "source": bool(sources),
+        "keyword": bool(keywords),
+        "topic": bool(topics),
+        "territory": bool(territories),
+    }
     criterion_matches = {
         "source": source_match,
         "keyword": keyword_match,
@@ -92,13 +136,11 @@ def evaluate_post_scope(post: Post, scope) -> dict:
         "territory": territory_match,
     }
 
-    configured_non_source = []
-    if keywords:
-        configured_non_source.append(keyword_match)
-    if topics:
-        configured_non_source.append(topic_match)
-    if territories:
-        configured_non_source.append(territory_match)
+    configured_non_source = [
+        criterion_matches[name]
+        for name in ("keyword", "topic", "territory")
+        if configured[name]
+    ]
 
     if not source_match:
         matched = False
@@ -112,6 +154,7 @@ def evaluate_post_scope(post: Post, scope) -> dict:
     return {
         "matched": matched,
         "match_mode": match_mode,
+        "configured": configured,
         "criteria": criterion_matches,
         "facts": facts,
     }
@@ -126,13 +169,19 @@ def preview_scope(posts: list[Post], scope, limit: int = 8) -> dict:
     matched_posts = []
     unmatched_examples = []
 
+    configured = {
+        "source": bool(getattr(scope, "sources", []) or []),
+        "keyword": bool(getattr(scope, "keywords", []) or []),
+        "topic": bool(getattr(scope, "topics", []) or []),
+        "territory": bool(getattr(scope, "territories", []) or []),
+    }
+
     for post in posts:
         evaluation = evaluate_post_scope(post, scope)
         for criterion, value in evaluation["criteria"].items():
-            if value:
-                diagnostics[f"{criterion}_match"] += 1
-            else:
-                diagnostics[f"{criterion}_miss"] += 1
+            if not evaluation["configured"][criterion]:
+                continue
+            diagnostics[f"{criterion}_match" if value else f"{criterion}_miss"] += 1
 
         if evaluation["matched"]:
             matched_posts.append((post, evaluation))
@@ -142,6 +191,7 @@ def preview_scope(posts: list[Post], scope, limit: int = 8) -> dict:
                 "title": post.title,
                 "source": post.source,
                 "criteria": evaluation["criteria"],
+                "configured": evaluation["configured"],
             })
 
     matched_posts.sort(key=lambda item: item[0].scraped_at or item[0].created_at, reverse=True)
@@ -156,21 +206,27 @@ def preview_scope(posts: list[Post], scope, limit: int = 8) -> dict:
             "url": post.url,
             "scraped_at": post.scraped_at,
             "criteria": evaluation["criteria"],
+            "configured": evaluation["configured"],
             "topics": post.topics or [],
             "keywords": post.keywords or [],
+            "detected_locations": evaluation["facts"]["locations"],
         })
 
     suggestions = build_scope_suggestions(posts, scope)
+
+    def metric(name: str):
+        return diagnostics[f"{name}_match"] if configured[name] else None
 
     return {
         "total_posts_scanned": len(posts),
         "total_matches": len(matched_posts),
         "match_mode": getattr(scope, "match_mode", "broad") or "broad",
+        "configured_criteria": configured,
         "diagnostics": {
-            "source_matches": diagnostics["source_match"],
-            "keyword_matches": diagnostics["keyword_match"],
-            "topic_matches": diagnostics["topic_match"],
-            "territory_matches": diagnostics["territory_match"],
+            "source_matches": metric("source"),
+            "keyword_matches": metric("keyword"),
+            "topic_matches": metric("topic"),
+            "territory_matches": metric("territory"),
         },
         "examples": examples,
         "unmatched_examples": unmatched_examples,
@@ -194,10 +250,12 @@ def build_scope_suggestions(posts: list[Post], scope) -> dict:
         for value in post.keywords or []:
             if value:
                 keyword_counts[str(value)] += 1
+        seen_locations = set()
         for location in facts["locations"]:
             label = location.get("label")
-            if label:
+            if label and label not in seen_locations:
                 territory_counts[label] += 1
+                seen_locations.add(label)
 
     configured_terms = []
     configured_terms.extend(getattr(scope, "keywords", []) or [])
@@ -205,11 +263,9 @@ def build_scope_suggestions(posts: list[Post], scope) -> dict:
     configured_terms.extend(getattr(scope, "territories", []) or [])
     configured_norm = {_norm(value) for value in configured_terms if _norm(value)}
 
-    candidate_terms = set()
-    candidate_terms.update(topic_counts.keys())
+    candidate_terms = set(topic_counts.keys())
     candidate_terms.update(keyword_counts.keys())
     candidate_terms.update(territory_counts.keys())
-    candidate_terms.update(location["label"] for location in GEO_KEYWORDS.values())
 
     normalized_lookup = {_norm(value): value for value in candidate_terms if _norm(value)}
     close = []
