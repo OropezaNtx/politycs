@@ -13,10 +13,10 @@ class MonitoringProjectPayload(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     description: str | None = Field(default=None, max_length=500)
     active: bool = True
-    sources: list[str] = []
-    keywords: list[str] = []
-    topics: list[str] = []
-    territories: list[str] = []
+    sources: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+    topics: list[str] = Field(default_factory=list)
+    territories: list[str] = Field(default_factory=list)
 
 
 def serialize_project(project: MonitoringProject) -> dict:
