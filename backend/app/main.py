@@ -22,7 +22,7 @@ ensure_monitoring_project_schema(engine)
 app = FastAPI(
     title="Politycs API",
     description="Public intelligence backend for Politycs",
-    version="0.2.5"
+    version="0.2.6"
 )
 
 @app.on_event("startup")
@@ -39,11 +39,11 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"message": "Politycs API funcionando correctamente", "version": "0.2.5"}
+    return {"message": "Politycs API funcionando correctamente", "version": "0.2.6"}
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "version": "0.2.5"}
+    return {"status": "ok", "version": "0.2.6"}
 
 app.include_router(posts_router)
 app.include_router(nlp_router)
