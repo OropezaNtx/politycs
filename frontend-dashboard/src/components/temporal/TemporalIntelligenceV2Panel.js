@@ -6,14 +6,14 @@ import { Activity, RefreshCw, TrendingUp } from "lucide-react";
 import { getTemporalIntelligence } from "@/services/api";
 import { useProject } from "@/context/ProjectContext";
 import { useSource } from "@/context/SourceContext";
+import { useTimeWindow } from "@/context/TimeWindowContext";
 import EvidenceList from "@/components/intelligence/EvidenceList";
-
-const WINDOWS = [1, 6, 24, 168];
+import TimeWindowSelector from "@/components/intelligence/TimeWindowSelector";
 
 export default function TemporalIntelligenceV2Panel() {
   const { projectId } = useProject();
   const { source } = useSource();
-  const [windowHours, setWindowHours] = useState(24);
+  const { windowHours } = useTimeWindow();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +34,7 @@ export default function TemporalIntelligenceV2Panel() {
   }, [source, projectId, windowHours]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void load();
-    }, 0);
+    const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
@@ -46,10 +44,10 @@ export default function TemporalIntelligenceV2Panel() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-300"><TrendingUp size={15} /> Temporal Intelligence V2</div>
           <h2 className="mt-2 text-xl font-semibold text-white">Acceleration & emerging signals</h2>
-          <p className="mt-1 text-sm text-slate-400">Compara la actividad reciente contra un baseline de 30 días.</p>
+          <p className="mt-1 text-sm text-slate-400">Compara la actividad de la ventana activa contra un baseline de 30 días.</p>
         </div>
-        <div className="flex gap-2">
-          {WINDOWS.map((value) => <button key={value} type="button" onClick={() => setWindowHours(value)} className={`rounded-lg border px-3 py-2 text-xs ${windowHours === value ? "border-amber-500/40 bg-amber-500/10 text-amber-300" : "border-slate-800 text-slate-400"}`}>{value === 168 ? "7d" : `${value}h`}</button>)}
+        <div className="flex items-center gap-2">
+          <TimeWindowSelector tone="amber" />
           <button type="button" onClick={load} className="rounded-lg border border-slate-800 p-2 text-slate-400"><RefreshCw size={15} className={loading ? "animate-spin" : ""} /></button>
         </div>
       </div>
