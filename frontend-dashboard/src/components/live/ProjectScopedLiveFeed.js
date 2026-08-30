@@ -28,12 +28,20 @@ export default function ProjectScopedLiveFeed() {
   }, [source, projectId]);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 30000);
-    window.addEventListener("rss-updated", load);
+    const initialTimer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    const interval = window.setInterval(() => {
+      void load();
+    }, 30000);
+    const handleRssUpdated = () => {
+      void load();
+    };
+    window.addEventListener("rss-updated", handleRssUpdated);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("rss-updated", load);
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+      window.removeEventListener("rss-updated", handleRssUpdated);
     };
   }, [load]);
 
