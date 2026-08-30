@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FolderKanban, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { FolderKanban, Pencil, Plus, Radar, Save, Search, Trash2, X } from "lucide-react";
 
 import {
   createMonitoringProject,
   deleteMonitoringProject,
   getMonitoringProjects,
+  previewMonitoringProject,
   updateMonitoringProject,
 } from "@/services/api";
 
@@ -33,10 +34,34 @@ function notifyProjectChange() {
   window.dispatchEvent(new CustomEvent("projects-updated"));
 }
 
+function toPayload(form) {
+  return {
+    name: form.name.trim() || "Preview",
+    description: form.description.trim() || null,
+    active: form.active,
+    match_mode: form.match_mode,
+    sources: splitCsv(form.sources),
+    keywords: splitCsv(form.keywords),
+    topics: splitCsv(form.topics),
+    territories: splitCsv(form.territories),
+  };
+}
+
+function PreviewMetric({ label, value }) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
 export default function ProjectManagementPanel() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
@@ -60,8 +85,14 @@ export default function ProjectManagementPanel() {
     return () => window.clearTimeout(timer);
   }, [loadProjects]);
 
+  function updateForm(patch) {
+    setForm((current) => ({ ...current, ...patch }));
+    setPreview(null);
+  }
+
   function startEdit(project) {
     setEditingId(project.id);
+    setPreview(null);
     setForm({
       name: project.name || "",
       description: project.description || "",
@@ -76,24 +107,30 @@ export default function ProjectManagementPanel() {
 
   function resetForm() {
     setEditingId(null);
+    setPreview(null);
     setForm(EMPTY_FORM);
+  }
+
+  async function handlePreview() {
+    setPreviewing(true);
+    setError("");
+    try {
+      const data = await previewMonitoringProject(toPayload(form));
+      setPreview(data);
+    } catch (requestError) {
+      console.error(requestError);
+      setPreview(null);
+      setError(requestError?.response?.data?.detail || "No fue posible probar el alcance.");
+    } finally {
+      setPreviewing(false);
+    }
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.name.trim()) return;
 
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || null,
-      active: form.active,
-      match_mode: form.match_mode,
-      sources: splitCsv(form.sources),
-      keywords: splitCsv(form.keywords),
-      topics: splitCsv(form.topics),
-      territories: splitCsv(form.territories),
-    };
-
+    const payload = toPayload(form);
     setSaving(true);
     setError("");
     try {
@@ -148,23 +185,23 @@ export default function ProjectManagementPanel() {
         <div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-300"><FolderKanban size={20} /></div>
         <div>
           <h2 className="text-lg font-semibold text-white">Monitoring Projects</h2>
-          <p className="text-sm text-slate-400">Configura el alcance por cliente, territorio o asunto y elige qué tan estricta debe ser la coincidencia.</p>
+          <p className="text-sm text-slate-400">Configura el alcance, pruébalo contra la base actual y guarda solo cuando el resultado tenga sentido.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-3 lg:grid-cols-2">
-        <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nombre del proyecto" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Descripción" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.sources} onChange={(event) => setForm({ ...form, sources: event.target.value })} placeholder="Fuentes opcionales: BBC Mundo, Google News" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.keywords} onChange={(event) => setForm({ ...form, keywords: event.target.value })} placeholder="Keywords: agua, seguridad, candidato" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.topics} onChange={(event) => setForm({ ...form, topics: event.target.value })} placeholder="Topics: agua, elecciones, transporte" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
-        <input value={form.territories} onChange={(event) => setForm({ ...form, territories: event.target.value })} placeholder="Territorios: Chimalhuacán, Nezahualcóyotl" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.name} onChange={(event) => updateForm({ name: event.target.value })} placeholder="Nombre del proyecto" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.description} onChange={(event) => updateForm({ description: event.target.value })} placeholder="Descripción" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.sources} onChange={(event) => updateForm({ sources: event.target.value })} placeholder="Fuentes opcionales: BBC Mundo, Google News" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.keywords} onChange={(event) => updateForm({ keywords: event.target.value })} placeholder="Keywords: agua, seguridad, candidato" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.topics} onChange={(event) => updateForm({ topics: event.target.value })} placeholder="Topics: agua, elecciones, transporte" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
+        <input value={form.territories} onChange={(event) => updateForm({ territories: event.target.value })} placeholder="Territorios: Chimalhuacán, Nezahualcóyotl" className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50" />
 
         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Matching mode</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {[{ value: "broad", label: "Amplio", help: "Keyword OR topic OR territorio" }, { value: "strict", label: "Estricto", help: "Keyword AND topic AND territorio" }].map((option) => (
-              <button key={option.value} type="button" onClick={() => setForm({ ...form, match_mode: option.value })} className={`rounded-lg border p-3 text-left ${form.match_mode === option.value ? "border-cyan-500/40 bg-cyan-500/10" : "border-slate-800 bg-slate-950/40"}`}>
+              <button key={option.value} type="button" onClick={() => updateForm({ match_mode: option.value })} className={`rounded-lg border p-3 text-left ${form.match_mode === option.value ? "border-cyan-500/40 bg-cyan-500/10" : "border-slate-800 bg-slate-950/40"}`}>
                 <p className="text-sm font-medium text-white">{option.label}</p>
                 <p className="mt-1 text-xs text-slate-500">{option.help}</p>
               </button>
@@ -173,17 +210,70 @@ export default function ProjectManagementPanel() {
         </div>
 
         <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-300">
-          <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} className="h-4 w-4" />
+          <input type="checkbox" checked={form.active} onChange={(event) => updateForm({ active: event.target.checked })} className="h-4 w-4" />
           Proyecto activo y disponible en el selector global
         </label>
 
         <div className="flex flex-wrap gap-2 lg:col-span-2">
+          <button type="button" onClick={handlePreview} disabled={previewing} className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50">
+            <Search size={16} /> {previewing ? "Analizando..." : "Probar alcance"}
+          </button>
           <button type="submit" disabled={saving || !form.name.trim()} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-50">
             {editingId ? <Save size={16} /> : <Plus size={16} />} {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear proyecto"}
           </button>
           {editingId && <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300"><X size={16} /> Cancelar</button>}
         </div>
       </form>
+
+      {preview && (
+        <div className={`mt-5 rounded-2xl border p-4 ${preview.total_matches ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
+          <div className="flex items-start gap-3">
+            <Radar size={18} className={preview.total_matches ? "text-emerald-300" : "text-amber-300"} />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-white">Scope Preview · {preview.total_matches} coincidencias</p>
+              <p className="mt-1 text-sm text-slate-400">Se analizaron {preview.total_posts_scanned} posts con modo {preview.match_mode === "strict" ? "Estricto" : "Amplio"}.</p>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <PreviewMetric label="Keyword" value={preview.diagnostics?.keyword_matches ?? 0} />
+                <PreviewMetric label="Topic" value={preview.diagnostics?.topic_matches ?? 0} />
+                <PreviewMetric label="Territorio" value={preview.diagnostics?.territory_matches ?? 0} />
+                <PreviewMetric label="Fuente" value={preview.diagnostics?.source_matches ?? 0} />
+              </div>
+
+              {!!preview.examples?.length && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ejemplos que sí coinciden</p>
+                  <div className="mt-2 space-y-2">
+                    {preview.examples.slice(0, 4).map((post) => (
+                      <div key={post.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                        <p className="text-sm text-white">{post.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{post.source || "Sin fuente"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!preview.total_matches && (
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnóstico</p>
+                    <p className="mt-2 text-sm text-slate-300">Si un criterio aparece en 0, ese dato no está siendo encontrado en la base actual. Prueba términos más amplios o elimina temporalmente ese criterio.</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sugerencias detectadas</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {(preview.suggestions?.related_terms || []).map((value) => <span key={`r-${value}`} className="rounded-full bg-cyan-500/10 px-2 py-1 text-cyan-300">{value}</span>)}
+                      {(preview.suggestions?.available_territories || []).slice(0, 4).map((value) => <span key={`g-${value}`} className="rounded-full bg-violet-500/10 px-2 py-1 text-violet-300">{value}</span>)}
+                      {(preview.suggestions?.top_topics || []).slice(0, 4).map((value) => <span key={`t-${value}`} className="rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">{value}</span>)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
 
