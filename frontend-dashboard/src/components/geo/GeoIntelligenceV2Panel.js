@@ -6,6 +6,8 @@ import { MapPin, Navigation, Radar, ShieldCheck } from "lucide-react";
 import { getGeoIntelligenceV2 } from "@/services/api";
 import { useProject } from "@/context/ProjectContext";
 import { useSource } from "@/context/SourceContext";
+import { useTimeWindow } from "@/context/TimeWindowContext";
+import TimeWindowSelector from "@/components/intelligence/TimeWindowSelector";
 
 const confidenceOptions = [
   { value: "low", label: "Todas" },
@@ -21,6 +23,7 @@ function ConfidenceBadge({ value }) {
 export default function GeoIntelligenceV2Panel() {
   const { projectId } = useProject();
   const { source } = useSource();
+  const { windowHours } = useTimeWindow();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +32,7 @@ export default function GeoIntelligenceV2Panel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getGeoIntelligenceV2({ source, projectId, windowHours: 168, minConfidence });
+      const response = await getGeoIntelligenceV2({ source, projectId, windowHours, minConfidence });
       setData(response);
       setSelected(response.territories?.[0] || null);
     } catch (error) {
@@ -39,7 +42,7 @@ export default function GeoIntelligenceV2Panel() {
     } finally {
       setLoading(false);
     }
-  }, [source, projectId, minConfidence]);
+  }, [source, projectId, windowHours, minConfidence]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -54,9 +57,12 @@ export default function GeoIntelligenceV2Panel() {
           <h2 className="mt-2 text-xl font-semibold text-white">Where the conversation is concentrating</h2>
           <p className="mt-1 text-sm text-slate-400">Ubicaciones canónicas, confianza de detección y evidencia auditable por territorio.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {confidenceOptions.map((option) => <button key={option.value} type="button" onClick={() => setMinConfidence(option.value)} className={`rounded-lg border px-3 py-2 text-xs ${minConfidence === option.value ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-slate-800 bg-slate-950/40 text-slate-500"}`}>{option.label}</button>)}
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-right"><p className="text-xs uppercase tracking-wide text-cyan-400">Territorios</p><p className="mt-1 text-2xl font-semibold text-white">{data?.total_territories ?? 0}</p></div>
+        <div className="flex flex-col items-start gap-3 lg:items-end">
+          <TimeWindowSelector tone="cyan" />
+          <div className="flex flex-wrap items-center gap-2">
+            {confidenceOptions.map((option) => <button key={option.value} type="button" onClick={() => setMinConfidence(option.value)} className={`rounded-lg border px-3 py-2 text-xs ${minConfidence === option.value ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-slate-800 bg-slate-950/40 text-slate-500"}`}>{option.label}</button>)}
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-right"><p className="text-xs uppercase tracking-wide text-cyan-400">Territorios</p><p className="mt-1 text-2xl font-semibold text-white">{data?.total_territories ?? 0}</p></div>
+          </div>
         </div>
       </div>
 
